@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布到微信公众号</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #1AAD19;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #179816;
+        }
+        
+        .preview {
+            margin-top: 30px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 4px;
+        }
+        
+        .preview-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #222;
+        }
+        
+        .preview-content {
+            line-height: 1.8;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: green;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>发布到微信公众号</h1>
+        
+        <form id="publishForm">
+            <div class="form-group">
+                <label for="title">文章标题</label>
+                <input type="text" id="title" placeholder="请输入文章标题" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="author">作者</label>
+                <input type="text" id="author" placeholder="请输入作者名称">
+            </div>
+            
+            <div class="form-group">
+                <label for="summary">摘要</label>
+                <textarea id="summary" rows="3" placeholder="请输入文章摘要（选填）"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="coverImage">封面图片URL</label>
+                <input type="text" id="coverImage" placeholder="请输入封面图片URL（选填）">
+            </div>
+            
+            <div class="form-group">
+                <label for="tags">标签（用逗号分隔）</label>
+                <input type="text" id="tags" placeholder="标签1,标签2,标签3">
+            </div>
+            
+            <div class="form-group">
+                <label for="category">所属分类</label>
+                <select id="category">
+                    <option value="">不选择</option>
+                    <option value="科技">科技</option>
+                    <option value="生活">生活</option>
+                    <option value="教育">教育</option>
+                    <option value="娱乐">娱乐</option>
+                    <option value="体育">体育</option>
+                </select>
+            </div>
+            
+            <button type="button" id="previewBtn">预览内容</button>
+            <button type="submit">发布文章</button>
+            <button type="button" id="backBtn">返回编辑器</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <p>正在发布到微信公众号，请稍候...</p>
+        </div>
+        
+        <div class="success-message" id="successMessage">
+            <p>文章已成功发布到微信公众号！</p>
+        </div>
+        
+        <div class="preview" id="preview" style="display: none;">
+            <h2>内容预览</h2>
+            <div id="previewContent"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取存储的内容
+            const storedContent = localStorage.getItem('wechatArticleContent');
+            if (!storedContent) {
+                alert('没有找到要发布的内容，请先在编辑器中创建内容！');
+                return;
+            }
+            
+            const contentData = JSON.parse(storedContent);
+            window.contentData = contentData; // 保存到全局变量以供发布使用
+            
+            // 绑定事件
+            document.getElementById('previewBtn').addEventListener('click', previewContent);
+            document.getElementById('publishForm').addEventListener('submit', publishContent);
+            document.getElementById('backBtn').addEventListener('click', function() {
+                window.close(); // 尝试关闭当前窗口
+                // 如果无法关闭，跳转回编辑器
+                window.location.href = 'index.html';
+            });
+        });
+        
+        function previewContent() {
+            const title = document.getElementById('title').value || '未命名文章';
+            const content = generateContent();
+            
+            document.getElementById('previewContent').innerHTML = `
+                <div class="preview-title">${title}</div>
+                <div class="preview-content">${content}</div>
+            `;
+            
+            document.getElementById('preview').style.display = 'block';
+        }
+        
+        function generateContent() {
+            const contentData = window.contentData;
+            let content = '';
+            
+            contentData.elements.forEach(element => {
+                if (element.type === 'group') {
+                    // 处理组合元素
+                    element.elements.forEach(subElement => {
+                        content += generateElementContent(subElement);
+                    });
+                } else {
+                    content += generateElementContent(element);
+                }
+            });
+            
+            return content;
+        }
+        
+        function generateElementContent(element) {
+            switch (element.type) {
+                case 'text':
+                    return `<p style="font-size:${element.fontSize}px; color:${element.color}; text-align:${element.textAlign}; line-height: 1.8;">${element.text}</p>`;
+                case 'title':
+                    return `<h2 style="font-size:${element.fontSize}px; color:${element.color}; font-weight:${element.fontWeight}; text-align:${element.textAlign}; margin: 20px 0;">${element.text}</h2>`;
+                case 'image':
+                    return `<div style="text-align: center; margin: 20px 0;"><img src="${element.src}" style="max-width: 100%; height: auto; border-radius: 4px;" width="${element.width}" height="${element.height}"></div>`;
+                case 'divider':
+                    return `<hr style="border: 0; height: ${element.height}px; background-color: ${element.color}; margin: 20px 0;">`;
+                case 'markdown':
+                    return renderMarkdown(element.content);
+                default:
+                    return '';
+            }
+        }
+        
+        // 简化版Markdown渲染（与编辑器中相同）
+        function renderMarkdown(mdText) {
+            let html = mdText;
+            
+            // 标题
+            html = html.replace(/^###### (.*$)/gim, '<h6>$1</h6>');
+            html = html.replace(/^##### (.*$)/gim, '<h5>$1</h5>');
+            html = html.replace(/^#### (.*$)/gim, '<h4>$4</h4>');
+            html = html.replace(/^### (.*$)/gim, '<h3>$3</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+            
+            // 修复上面的正则表达式问题，重新处理标题
+            html = html.replace(/^##### (.*$)/gim, '<h5>$1</h5>');
+            html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            
+            // 加粗
+            html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+            
+            // 斜体
+            html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+            
+            // 无序列表
+            html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+            
+            // 引用
+            html = html.replace(/^> (.*$)/gim, '<blockquote style="margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; background-color: #f9f9f9;">$1</blockquote>');
+            
+            // 链接
+            html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" style="color: #1AAD19;">$1</a>');
+            
+            // 段落
+            html = html.replace(/\n\n/gim, '</p><p>');
+            html = '<p>' + html + '</p>';
+            html = html.replace(/<p><\/p>/gim, '');
+            
+            // 清理多余的换行符
+            html = html.replace(/\n/gim, '<br>');
+            
+            return html;
+        }
+        
+        async function publishContent(e) {
+            e.preventDefault();
+            
+            // 显示加载状态
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            try {
+                // 这里应该调用微信API进行实际发布
+                // 模拟发布过程
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // 发布成功
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'block';
+                
+                // 清除本地存储的内容
+                localStorage.removeItem('wechatArticleContent');
+                
+                // 2秒后返回编辑器
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                alert('发布失败：' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

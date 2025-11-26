@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号文章排版编辑器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>微信公众号文章排版编辑器</h1>
+            <div class="toolbar">
+                <button id="saveTemplateBtn">保存模板</button>
+                <button id="loadTemplateBtn">加载模板</button>
+                <button id="exportTemplateBtn">导出模板</button>
+                <button id="importTemplateBtn">导入模板</button>
+                <button id="publishBtn">发布到公众号</button>
+            </div>
+        </header>
+        
+        <div class="main-container">
+            <div class="sidebar">
+                <h3>组件面板</h3>
+                <div class="component-category">
+                    <h4>基础组件</h4>
+                    <div class="component" draggable="true" data-type="text">文本</div>
+                    <div class="component" draggable="true" data-type="image">图片</div>
+                    <div class="component" draggable="true" data-type="title">标题</div>
+                    <div class="component" draggable="true" data-type="divider">分割线</div>
+                </div>
+                
+                <div class="component-category">
+                    <h4>模板</h4>
+                    <div class="component" draggable="true" data-type="template-image">图片排版模板</div>
+                    <div class="component" draggable="true" data-type="template-book">图书介绍模板</div>
+                    <div class="component" draggable="true" data-type="template-md">Markdown模板</div>
+                </div>
+                
+                <div class="saved-templates">
+                    <h4>已保存模板</h4>
+                    <ul id="savedTemplatesList"></ul>
+                </div>
+            </div>
+            
+            <div class="editor-container">
+                <div id="editor" class="editor">
+                    <svg id="svgEditor" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 编辑区域将在这里动态生成 -->
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <div id="propertiesPanel" class="properties-panel">
+            <h3>属性设置</h3>
+            <div id="propertiesContent">
+                <p>选中元素以编辑属性</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

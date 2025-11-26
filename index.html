@@ -1,0 +1,3511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号文章排版工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            background-color: #f5f5f5;
+        }
+        
+        /* 左侧组件面板 */
+        .sidebar {
+            width: 280px;
+            background-color: #fff;
+            border-right: 1px solid #ddd;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            color: #333;
+        }
+        
+        .components, .templates, .saved-templates {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .section-title h4 {
+            margin: 0;
+            color: #555;
+        }
+        
+        .section-title button {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .component-item, .template-item, .saved-template-item {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .component-item:hover, .template-item:hover, .saved-template-item:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .component-item .desc, .template-item .desc {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .saved-template-item {
+            padding: 12px;
+        }
+        
+        .saved-template-item h5 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .saved-template-item p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .saved-template-item .actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .saved-template-item button {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .btn-load {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-edit {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        /* 主编辑区域 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow: hidden;
+        }
+        
+        .toolbar {
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            border-right: 1px solid #eee;
+        }
+        
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+        
+        .toolbar button {
+            padding: 6px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background-color 0.3s;
+        }
+        
+        .toolbar button:hover {
+            background-color: #0056b3;
+        }
+        
+        .toolbar select, .toolbar input[type="color"] {
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .toolbar .format-btn {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .editor-container {
+            flex: 1;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: auto;
+            padding: 20px;
+            position: relative;
+        }
+        
+        #editor-svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .element {
+            cursor: move;
+        }
+        
+        .selected {
+            stroke: #007bff;
+            stroke-width: 2px;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 70%;
+            border-radius: 8px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal h3 {
+            margin-top: 0;
+        }
+        
+        .modal input, .modal select, .modal textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .modal-buttons {
+            margin-top: 15px;
+            text-align: right;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .modal-buttons button {
+            padding: 8px 15px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .modal-buttons .confirm-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .modal-buttons .cancel-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .modal-buttons .action-btn {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        /* 组件预览 */
+        .component-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .preview-icon {
+            width: 24px;
+            height: 24px;
+            background-color: #007bff;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+        
+        /* 搜索框 */
+        .search-box {
+            margin-bottom: 10px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        /* 格式化工具栏增强 */
+        .format-panel {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        
+        .format-panel button {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 2px;
+        }
+        
+        .format-panel select {
+            padding: 4px;
+            margin: 2px;
+        }
+        
+        .format-panel input[type="color"] {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            margin: 2px;
+        }
+        
+        /* 图片上传样式 */
+        .image-upload-panel {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            width: 300px;
+        }
+        
+        .image-upload-panel input {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .image-preview {
+            width: 100%;
+            height: 150px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        /* 图书展示样式 */
+        .book-item {
+            display: flex;
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background-color: #fafafa;
+        }
+        
+        .book-cover {
+            width: 80px;
+            height: 100px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .book-info {
+            flex: 1;
+        }
+        
+        .book-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .book-author {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .book-desc {
+            font-size: 13px;
+            color: #495057;
+        }
+        
+        /* MD优化预览样式 */
+        .md-preview {
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+        }
+        
+        .md-preview h1, .md-preview h2, .md-preview h3 {
+            margin: 10px 0;
+            color: #333;
+        }
+        
+        .md-preview p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        
+        .md-preview strong {
+            font-weight: bold;
+            color: #d32f2f;
+        }
+        
+        .md-preview em {
+            font-style: italic;
+            color: #1976d2;
+        }
+        
+        .md-preview code {
+            background-color: #f1f1f1;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        
+        .md-preview blockquote {
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+        
+        .md-preview ul, .md-preview ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .md-preview li {
+            margin: 5px 0;
+        }
+        
+        /* 发布面板 */
+        .publish-panel {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            width: 400px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .publish-panel h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        
+        .publish-panel .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .publish-panel label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .publish-panel input, .publish-panel textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .publish-panel .actions {
+            text-align: right;
+            margin-top: 20px;
+        }
+        
+        .publish-panel .actions button {
+            margin-left: 10px;
+            padding: 8px 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧组件面板 -->
+    <div class="sidebar">
+        <div class="search-box">
+            <input type="text" id="component-search" placeholder="搜索组件或模板...">
+        </div>
+        
+        <div class="components">
+            <div class="section-title">
+                <h4>组件库</h4>
+            </div>
+            <div class="component-item" data-type="title">
+                <div class="component-preview">
+                    <div class="preview-icon">T</div>
+                    <div>
+                        <strong>标题组件</strong>
+                        <div class="desc">用于文章标题</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="text">
+                <div class="component-preview">
+                    <div class="preview-icon">文</div>
+                    <div>
+                        <strong>文字组件</strong>
+                        <div class="desc">用于正文内容</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="image">
+                <div class="component-preview">
+                    <div class="preview-icon">图</div>
+                    <div>
+                        <strong>图片组件</strong>
+                        <div class="desc">用于插入图片</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="divider">
+                <div class="component-preview">
+                    <div class="preview-icon">─</div>
+                    <div>
+                        <strong>分割线</strong>
+                        <div class="desc">用于分隔内容</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="blockquote">
+                <div class="component-preview">
+                    <div class="preview-icon">”</div>
+                    <div>
+                        <strong>引用块</strong>
+                        <div class="desc">用于引用内容</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="list">
+                <div class="component-preview">
+                    <div class="preview-icon">•</div>
+                    <div>
+                        <strong>列表组件</strong>
+                        <div class="desc">用于项目列表</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="highlight">
+                <div class="component-preview">
+                    <div class="preview-icon">H</div>
+                    <div>
+                        <strong>高亮文本</strong>
+                        <div class="desc">用于关键词突出</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="book">
+                <div class="component-preview">
+                    <div class="preview-icon">B</div>
+                    <div>
+                        <strong>图书组件</strong>
+                        <div class="desc">用于图书介绍</div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-item" data-type="markdown">
+                <div class="component-preview">
+                    <div class="preview-icon">M</div>
+                    <div>
+                        <strong>MD优化组件</strong>
+                        <div class="desc">用于MD格式优化</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="templates">
+            <div class="section-title">
+                <h4>默认模板</h4>
+            </div>
+            <div class="template-item" data-template="default">
+                <strong>基础排版</strong>
+                <div class="desc">简单的标题+正文布局</div>
+            </div>
+            <div class="template-item" data-template="image">
+                <strong>图片排版</strong>
+                <div class="desc">图片+文字描述布局</div>
+            </div>
+            <div class="template-item" data-template="book">
+                <strong>图书介绍</strong>
+                <div class="desc">多本书籍介绍布局</div>
+            </div>
+            <div class="template-item" data-template="md">
+                <strong>MD优化</strong>
+                <div class="desc">Markdown格式优化</div>
+            </div>
+        </div>
+        
+        <div class="saved-templates">
+            <div class="section-title">
+                <h4>我的模板</h4>
+                <button id="refresh-templates-btn">刷新</button>
+            </div>
+            <div id="saved-templates-container">
+                <!-- 动态加载保存的模板 -->
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+            <button id="save-template-btn" style="width: 100%; padding: 10px; margin-bottom: 8px;">💾 保存为模板</button>
+            <button id="import-template-btn" style="width: 100%; padding: 10px; margin-bottom: 8px;">📥 导入模板</button>
+            <button id="export-template-btn" style="width: 100%; padding: 10px; margin-bottom: 8px;">📤 导出模板</button>
+            <input type="file" id="template-file" accept=".json" style="display: none;">
+        </div>
+    </div>
+    
+    <!-- 主编辑区域 -->
+    <div class="main-content">
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button id="undo-btn">撤销</button>
+                <button id="redo-btn">重做</button>
+                <button id="clear-btn">清空</button>
+                <button id="publish-btn">发布</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <select id="font-family">
+                    <option value="Microsoft YaHei">微软雅黑</option>
+                    <option value="SimSun">宋体</option>
+                    <option value="SimHei">黑体</option>
+                    <option value="KaiTi">楷体</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Georgia">Georgia</option>
+                </select>
+                <select id="font-size">
+                    <option value="12">12px</option>
+                    <option value="14">14px</option>
+                    <option value="16" selected>16px</option>
+                    <option value="18">18px</option>
+                    <option value="20">20px</option>
+                    <option value="24">24px</option>
+                    <option value="28">28px</option>
+                    <option value="32">32px</option>
+                </select>
+            </div>
+            
+            <div class="toolbar-group">
+                <button id="bold-btn" class="format-btn">B</button>
+                <button id="italic-btn" class="format-btn">I</button>
+                <button id="underline-btn" class="format-btn">U</button>
+                <button id="strikethrough-btn" class="format-btn">S</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <input type="color" id="text-color" value="#000000" title="文字颜色">
+                <input type="color" id="bg-color" value="#ffffff" title="背景颜色">
+            </div>
+            
+            <div class="toolbar-group">
+                <button id="align-left">左对齐</button>
+                <button id="align-center">居中</button>
+                <button id="align-right">右对齐</button>
+                <button id="align-justify">两端对齐</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <button id="copy-btn">复制</button>
+                <button id="paste-btn">粘贴</button>
+                <button id="delete-btn">删除</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <button id="insert-link">插入链接</button>
+                <button id="insert-emoji">插入表情</button>
+                <button id="convert-md">转换MD</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <button id="upload-image">上传图片</button>
+                <button id="add-book">添加图书</button>
+            </div>
+        </div>
+        
+        <div class="editor-container">
+            <svg id="editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <!-- 格式化面板 -->
+            <div id="format-panel" class="format-panel">
+                <select id="format-font-family">
+                    <option value="Microsoft YaHei">微软雅黑</option>
+                    <option value="SimSun">宋体</option>
+                    <option value="SimHei">黑体</option>
+                    <option value="KaiTi">楷体</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Georgia">Georgia</option>
+                </select>
+                <select id="format-font-size">
+                    <option value="12">12px</option>
+                    <option value="14">14px</option>
+                    <option value="16" selected>16px</option>
+                    <option value="18">18px</option>
+                    <option value="20">20px</option>
+                    <option value="24">24px</option>
+                    <option value="28">28px</option>
+                    <option value="32">32px</option>
+                </select>
+                <button id="format-bold" class="format-btn">B</button>
+                <button id="format-italic" class="format-btn">I</button>
+                <button id="format-underline" class="format-btn">U</button>
+                <input type="color" id="format-text-color" value="#000000" title="文字颜色">
+                <button id="format-align-left" class="format-btn">L</button>
+                <button id="format-align-center" class="format-btn">C</button>
+                <button id="format-align-right" class="format-btn">R</button>
+            </div>
+            
+            <!-- 图片上传面板 -->
+            <div id="image-upload-panel" class="image-upload-panel">
+                <h4>上传图片</h4>
+                <input type="file" id="image-upload-input" accept="image/*">
+                <button id="upload-btn">上传</button>
+                <button id="url-btn">使用URL</button>
+                <div class="image-preview">
+                    <div id="image-preview-container">请选择图片文件</div>
+                </div>
+                <input type="text" id="image-url-input" placeholder="或输入图片URL" style="display: none;">
+                <div style="margin-top: 10px;">
+                    <label>宽度: <input type="number" id="image-width" value="300" min="50" max="1000"></label>
+                    <label>高度: <input type="number" id="image-height" value="200" min="50" max="1000"></label>
+                </div>
+            </div>
+            
+            <!-- 图书添加面板 -->
+            <div id="book-add-panel" class="image-upload-panel">
+                <h4>添加图书</h4>
+                <div>
+                    <label>图书封面URL:</label>
+                    <input type="text" id="book-cover-url" placeholder="输入图书封面图片URL">
+                </div>
+                <div>
+                    <label>图书名称:</label>
+                    <input type="text" id="book-title" placeholder="输入图书名称">
+                </div>
+                <div>
+                    <label>作者:</label>
+                    <input type="text" id="book-author" placeholder="输入作者名">
+                </div>
+                <div>
+                    <label>简介:</label>
+                    <textarea id="book-desc" placeholder="输入图书简介" rows="3"></textarea>
+                </div>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="add-book-confirm">添加</button>
+                    <button id="add-book-cancel">取消</button>
+                </div>
+            </div>
+            
+            <!-- MD转换面板 -->
+            <div id="md-convert-panel" class="image-upload-panel">
+                <h4>Markdown转换</h4>
+                <textarea id="md-input" placeholder="请输入Markdown格式文本" rows="6"></textarea>
+                <div style="margin: 10px 0;">
+                    <label>转换选项:</label>
+                    <div>
+                        <input type="checkbox" id="md-bold" checked> <label for="md-bold">粗体优化</label>
+                        <input type="checkbox" id="md-italic" checked style="margin-left: 10px;"> <label for="md-italic">斜体优化</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="md-headers" checked> <label for="md-headers">标题优化</label>
+                        <input type="checkbox" id="md-blockquotes" checked style="margin-left: 10px;"> <label for="md-blockquotes">引用块优化</label>
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 10px;">
+                    <button id="convert-md-confirm">转换</button>
+                    <button id="convert-md-cancel">取消</button>
+                </div>
+                <div id="md-preview" class="md-preview" style="display: none; margin-top: 10px;"></div>
+            </div>
+            
+            <!-- 发布面板 -->
+            <div id="publish-panel" class="publish-panel">
+                <h3>发布文章</h3>
+                <div class="form-group">
+                    <label for="article-title">文章标题:</label>
+                    <input type="text" id="article-title" placeholder="请输入文章标题">
+                </div>
+                <div class="form-group">
+                    <label for="article-author">作者:</label>
+                    <input type="text" id="article-author" placeholder="请输入作者名">
+                </div>
+                <div class="form-group">
+                    <label for="article-summary">摘要:</label>
+                    <textarea id="article-summary" placeholder="请输入文章摘要" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="article-cover">封面图URL:</label>
+                    <input type="text" id="article-cover" placeholder="请输入封面图URL">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="is-original"> 标记为原创
+                    </label>
+                </div>
+                <div class="actions">
+                    <button class="cancel-btn" id="cancel-publish">取消</button>
+                    <button class="action-btn" id="confirm-publish">确认发布</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 模板保存模态框 -->
+    <div id="save-template-modal" class="modal">
+        <div class="modal-content">
+            <h3>保存模板</h3>
+            <label>模板名称:</label>
+            <input type="text" id="template-name" placeholder="请输入模板名称">
+            <label>模板描述:</label>
+            <textarea id="template-desc" rows="3" placeholder="请输入模板描述"></textarea>
+            <label>模板标签（用逗号分隔）:</label>
+            <input type="text" id="template-tags" placeholder="如: 图片,标题,正文">
+            <div class="modal-buttons">
+                <button class="cancel-btn" id="cancel-save">取消</button>
+                <button class="confirm-btn" id="confirm-save">保存模板</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 模板管理模态框 -->
+    <div id="template-manager-modal" class="modal">
+        <div class="modal-content">
+            <h3>模板管理</h3>
+            <div id="all-templates-list">
+                <!-- 所有模板将动态加载到这里 -->
+            </div>
+            <div class="modal-buttons">
+                <button class="cancel-btn" id="close-template-manager">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局状态
+        let editorState = {
+            elements: [],
+            selectedElement: null,
+            history: [],
+            historyIndex: -1,
+            currentTemplate: null,
+            clipboard: null  // 用于复制粘贴功能
+        };
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initEditor();
+            bindEvents();
+            loadSavedTemplatesToSidebar();
+        });
+        
+        // 初始化编辑器
+        function initEditor() {
+            // 创建默认背景
+            createDefaultBackground();
+        }
+        
+        // 创建默认背景
+        function createDefaultBackground() {
+            const svg = document.getElementById('editor-svg');
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', '0');
+            rect.setAttribute('y', '0');
+            rect.setAttribute('width', '100%');
+            rect.setAttribute('height', '100%');
+            rect.setAttribute('fill', '#ffffff');
+            svg.appendChild(rect);
+        }
+        
+        // 绑定事件
+        function bindEvents() {
+            // 组件拖拽事件
+            document.querySelectorAll('.component-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    if (type === 'book') {
+                        showBookAddPanel();
+                    } else if (type === 'markdown') {
+                        showMdConvertPanel();
+                    } else {
+                        createElement(type);
+                    }
+                });
+            });
+            
+            // 模板选择事件
+            document.querySelectorAll('.template-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const templateType = this.getAttribute('data-template');
+                    loadTemplate(templateType);
+                });
+            });
+            
+            // 工具栏事件
+            document.getElementById('save-template-btn').addEventListener('click', showSaveTemplateModal);
+            document.getElementById('import-template-btn').addEventListener('click', importTemplate);
+            document.getElementById('export-template-btn').addEventListener('click', exportTemplate);
+            document.getElementById('clear-btn').addEventListener('click', clearCanvas);
+            document.getElementById('publish-btn').addEventListener('click', showPublishPanel);
+            
+            // 模态框事件
+            document.getElementById('cancel-save').addEventListener('click', hideSaveTemplateModal);
+            document.getElementById('confirm-save').addEventListener('click', saveTemplate);
+            
+            // 模板文件上传
+            document.getElementById('template-file').addEventListener('change', handleTemplateFile);
+            
+            // 格式化事件
+            document.getElementById('bold-btn').addEventListener('click', toggleBold);
+            document.getElementById('italic-btn').addEventListener('click', toggleItalic);
+            document.getElementById('underline-btn').addEventListener('click', toggleUnderline);
+            document.getElementById('strikethrough-btn').addEventListener('click', toggleStrikethrough);
+            document.getElementById('text-color').addEventListener('change', changeTextColor);
+            document.getElementById('bg-color').addEventListener('change', changeBgColor);
+            document.getElementById('font-family').addEventListener('change', changeFontFamily);
+            document.getElementById('font-size').addEventListener('change', changeFontSize);
+            
+            // 对齐事件
+            document.getElementById('align-left').addEventListener('click', () => alignText('start'));
+            document.getElementById('align-center').addEventListener('click', () => alignText('middle'));
+            document.getElementById('align-right').addEventListener('click', () => alignText('end'));
+            document.getElementById('align-justify').addEventListener('click', () => alignText('justify'));
+            
+            // 编辑操作
+            document.getElementById('copy-btn').addEventListener('click', copyElement);
+            document.getElementById('paste-btn').addEventListener('click', pasteElement);
+            document.getElementById('delete-btn').addEventListener('click', deleteSelectedElement);
+            
+            // 历史记录
+            document.getElementById('undo-btn').addEventListener('click', undo);
+            document.getElementById('redo-btn').addEventListener('click', redo);
+            
+            // 插入功能
+            document.getElementById('insert-link').addEventListener('click', insertLink);
+            document.getElementById('insert-emoji').addEventListener('click', insertEmoji);
+            document.getElementById('convert-md').addEventListener('click', showMdConvertPanel);
+            
+            // 图片上传功能
+            document.getElementById('upload-image').addEventListener('click', showImageUploadPanel);
+            document.getElementById('upload-btn').addEventListener('click', uploadImage);
+            document.getElementById('url-btn').addEventListener('click', useImageUrl);
+            document.getElementById('image-upload-input').addEventListener('change', previewImage);
+            
+            // 图书添加功能
+            document.getElementById('add-book').addEventListener('click', showBookAddPanel);
+            document.getElementById('add-book-confirm').addEventListener('click', addBook);
+            document.getElementById('add-book-cancel').addEventListener('click', hideBookAddPanel);
+            
+            // MD转换功能
+            document.getElementById('convert-md-confirm').addEventListener('click', convertMarkdown);
+            document.getElementById('convert-md-cancel').addEventListener('click', hideMdConvertPanel);
+            document.getElementById('md-input').addEventListener('input', previewMarkdown);
+            
+            // 发布功能
+            document.getElementById('confirm-publish').addEventListener('click', publishToWeChat);
+            document.getElementById('cancel-publish').addEventListener('click', hidePublishPanel);
+            
+            // 刷新模板列表
+            document.getElementById('refresh-templates-btn').addEventListener('click', loadSavedTemplatesToSidebar);
+            
+            // 模板管理模态框
+            document.getElementById('close-template-manager').addEventListener('click', () => {
+                document.getElementById('template-manager-modal').style.display = 'none';
+            });
+            
+            // 点击画布取消选择
+            document.getElementById('editor-svg').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    document.querySelectorAll('.element').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+                    document.getElementById('format-panel').style.display = 'none';
+                    document.getElementById('image-upload-panel').style.display = 'none';
+                    document.getElementById('book-add-panel').style.display = 'none';
+                    document.getElementById('md-convert-panel').style.display = 'none';
+                    editorState.selectedElement = null;
+                }
+            });
+            
+            // 搜索功能
+            document.getElementById('component-search').addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                filterComponentsAndTemplates(searchTerm);
+            });
+            
+            // 键盘快捷键
+            document.addEventListener('keydown', function(e) {
+                // Ctrl+S 保存模板
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    showSaveTemplateModal();
+                }
+                
+                // Ctrl+O 打开模板管理
+                if (e.ctrlKey && e.key === 'o') {
+                    e.preventDefault();
+                    document.getElementById('template-manager-modal').style.display = 'block';
+                    loadAllTemplatesToManager();
+                }
+                
+                // Delete 删除选中元素
+                if (e.key === 'Delete' && editorState.selectedElement) {
+                    deleteSelectedElement();
+                }
+                
+                // Ctrl+C 复制
+                if (e.ctrlKey && e.key === 'c' && editorState.selectedElement) {
+                    e.preventDefault();
+                    copyElement();
+                }
+                
+                // Ctrl+V 粘贴
+                if (e.ctrlKey && e.key === 'v' && editorState.clipboard) {
+                    e.preventDefault();
+                    pasteElement();
+                }
+                
+                // Ctrl+Z 撤销
+                if (e.ctrlKey && e.key === 'z') {
+                    e.preventDefault();
+                    undo();
+                }
+                
+                // Ctrl+Y 重做
+                if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) {
+                    e.preventDefault();
+                    redo();
+                }
+            });
+            
+            // 为选中的元素添加事件监听器
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('element')) {
+                    // 隐藏其他面板
+                    document.getElementById('image-upload-panel').style.display = 'none';
+                    document.getElementById('book-add-panel').style.display = 'none';
+                    document.getElementById('md-convert-panel').style.display = 'none';
+                    document.getElementById('publish-panel').style.display = 'none';
+                    
+                    if (e.target.tagName === 'text' || e.target.tagName === 'title') {
+                        // 显示格式化面板
+                        showFormatPanel(e.target);
+                    }
+                } else if (!e.target.closest('#format-panel') && 
+                           !e.target.closest('#image-upload-panel') && 
+                           !e.target.closest('#book-add-panel') && 
+                           !e.target.closest('#md-convert-panel') && 
+                           !e.target.closest('#publish-panel')) {
+                    // 点击其他地方隐藏所有面板
+                    document.getElementById('format-panel').style.display = 'none';
+                    document.getElementById('image-upload-panel').style.display = 'none';
+                    document.getElementById('book-add-panel').style.display = 'none';
+                    document.getElementById('md-convert-panel').style.display = 'none';
+                    document.getElementById('publish-panel').style.display = 'none';
+                }
+            });
+        }
+        
+        // 显示格式化面板
+        function showFormatPanel(element) {
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                const panel = document.getElementById('format-panel');
+                const rect = element.getBoundingClientRect();
+                const editorRect = document.querySelector('.editor-container').getBoundingClientRect();
+                
+                panel.style.display = 'block';
+                panel.style.left = (rect.left - editorRect.left + rect.width / 2 - panel.offsetWidth / 2) + 'px';
+                panel.style.top = (rect.top - editorRect.top - panel.offsetHeight - 5) + 'px';
+                
+                // 绑定格式化面板事件
+                bindFormatPanelEvents(element);
+            }
+        }
+        
+        // 绑定格式化面板事件
+        function bindFormatPanelEvents(element) {
+            const panel = document.getElementById('format-panel');
+            
+            // 字体
+            document.getElementById('format-font-family').onchange = function() {
+                element.setAttribute('font-family', this.value);
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            // 字号
+            document.getElementById('format-font-size').onchange = function() {
+                element.setAttribute('font-size', this.value);
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            // 粗体
+            document.getElementById('format-bold').onclick = function() {
+                const currentWeight = element.getAttribute('font-weight') || 'normal';
+                const newWeight = currentWeight === 'bold' ? 'normal' : 'bold';
+                element.setAttribute('font-weight', newWeight);
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            // 斜体
+            document.getElementById('format-italic').onclick = function() {
+                const currentStyle = element.getAttribute('font-style') || 'normal';
+                const newStyle = currentStyle === 'italic' ? 'normal' : 'italic';
+                element.setAttribute('font-style', newStyle);
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            // 下划线
+            document.getElementById('format-underline').onclick = function() {
+                const currentTextDecoration = element.getAttribute('text-decoration') || 'none';
+                const newDecoration = currentTextDecoration === 'underline' ? 'none' : 'underline';
+                element.setAttribute('text-decoration', newDecoration);
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            // 颜色
+            document.getElementById('format-text-color').onchange = function() {
+                element.setAttribute('fill', this.value);
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            // 对齐
+            document.getElementById('format-align-left').onclick = function() {
+                element.setAttribute('text-anchor', 'start');
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            document.getElementById('format-align-center').onclick = function() {
+                element.setAttribute('text-anchor', 'middle');
+                updateElementData(element);
+                saveStateToHistory();
+            };
+            
+            document.getElementById('format-align-right').onclick = function() {
+                element.setAttribute('text-anchor', 'end');
+                updateElementData(element);
+                saveStateToHistory();
+            };
+        }
+        
+        // 显示图片上传面板
+        function showImageUploadPanel() {
+            const panel = document.getElementById('image-upload-panel');
+            panel.style.display = 'block';
+            
+            // 重置表单
+            document.getElementById('image-upload-input').value = '';
+            document.getElementById('image-url-input').value = '';
+            document.getElementById('image-url-input').style.display = 'none';
+            document.getElementById('image-preview-container').innerHTML = '请选择图片文件';
+            
+            // 隐藏其他面板
+            document.getElementById('book-add-panel').style.display = 'none';
+            document.getElementById('md-convert-panel').style.display = 'none';
+            document.getElementById('publish-panel').style.display = 'none';
+        }
+        
+        // 预览图片
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('image-preview-container').innerHTML = `<img src="${e.target.result}" alt="预览图">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // 上传图片
+        function uploadImage() {
+            const fileInput = document.getElementById('image-upload-input');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('请选择一张图片');
+                return;
+            }
+            
+            // 这里应该实现真实的图片上传逻辑
+            // 为了演示，我们使用文件的Data URL
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageUrl = e.target.result;
+                const width = parseInt(document.getElementById('image-width').value);
+                const height = parseInt(document.getElementById('image-height').value);
+                
+                // 在画布上创建图片元素
+                createImageElementAtPosition(imageUrl, width, height);
+                
+                // 隐藏面板
+                document.getElementById('image-upload-panel').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 使用图片URL
+        function useImageUrl() {
+            document.getElementById('image-upload-input').style.display = 'none';
+            document.getElementById('image-url-input').style.display = 'block';
+            
+            // 切换按钮功能
+            if (document.getElementById('url-btn').textContent === '使用URL') {
+                document.getElementById('url-btn').textContent = '确认URL';
+            } else {
+                const imageUrl = document.getElementById('image-url-input').value.trim();
+                if (!imageUrl) {
+                    alert('请输入图片URL');
+                    return;
+                }
+                
+                const width = parseInt(document.getElementById('image-width').value);
+                const height = parseInt(document.getElementById('image-height').value);
+                
+                // 在画布上创建图片元素
+                createImageElementAtPosition(imageUrl, width, height);
+                
+                // 隐藏面板
+                document.getElementById('image-upload-panel').style.display = 'none';
+            }
+        }
+        
+        // 在指定位置创建图片元素
+        function createImageElementAtPosition(src, width, height) {
+            const svg = document.getElementById('editor-svg');
+            
+            // 创建图片元素
+            const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            image.setAttribute('x', '50');
+            image.setAttribute('y', '150');
+            image.setAttribute('width', width);
+            image.setAttribute('height', height);
+            image.setAttribute('href', src);
+            image.classList.add('element');
+            
+            // 图片点击事件
+            image.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectElement(image);
+                
+                // 询问是否更换图片
+                const change = confirm('是否要更换这张图片？');
+                if (change) {
+                    const newSrc = prompt('请输入新的图片URL:', image.getAttribute('href'));
+                    if (newSrc) {
+                        image.setAttribute('href', newSrc);
+                        updateElementData(image);
+                        saveStateToHistory();
+                    }
+                }
+            });
+            
+            svg.appendChild(image);
+            
+            // 添加到状态中
+            editorState.elements.push({
+                id: Date.now(),
+                type: 'image',
+                element: image,
+                content: src,
+                x: 50,
+                y: 150,
+                width: width,
+                height: height
+            });
+            
+            saveStateToHistory();
+        }
+        
+        // 显示图书添加面板
+        function showBookAddPanel() {
+            const panel = document.getElementById('book-add-panel');
+            panel.style.display = 'block';
+            
+            // 重置表单
+            document.getElementById('book-cover-url').value = '';
+            document.getElementById('book-title').value = '';
+            document.getElementById('book-author').value = '';
+            document.getElementById('book-desc').value = '';
+            
+            // 隐藏其他面板
+            document.getElementById('image-upload-panel').style.display = 'none';
+            document.getElementById('md-convert-panel').style.display = 'none';
+            document.getElementById('publish-panel').style.display = 'none';
+        }
+        
+        // 隐藏图书添加面板
+        function hideBookAddPanel() {
+            document.getElementById('book-add-panel').style.display = 'none';
+        }
+        
+        // 添加图书
+        function addBook() {
+            const coverUrl = document.getElementById('book-cover-url').value.trim();
+            const title = document.getElementById('book-title').value.trim();
+            const author = document.getElementById('book-author').value.trim();
+            const desc = document.getElementById('book-desc').value.trim();
+            
+            if (!title) {
+                alert('请输入图书名称');
+                return;
+            }
+            
+            // 创建图书元素
+            createBookElement(coverUrl, title, author, desc);
+            
+            // 隐藏面板
+            hideBookAddPanel();
+        }
+        
+        // 创建图书元素
+        function createBookElement(coverUrl, title, author, desc) {
+            const svg = document.getElementById('editor-svg');
+            
+            // 创建图书信息组合元素
+            const bookGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            bookGroup.setAttribute('class', 'element');
+            bookGroup.setAttribute('data-type', 'book');
+            
+            // 图书封面图片
+            if (coverUrl) {
+                const coverImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                coverImage.setAttribute('x', '50');
+                coverImage.setAttribute('y', '150');
+                coverImage.setAttribute('width', '80');
+                coverImage.setAttribute('height', '100');
+                coverImage.setAttribute('href', coverUrl);
+                bookGroup.appendChild(coverImage);
+            }
+            
+            // 图书标题
+            const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            titleText.setAttribute('x', coverUrl ? '140' : '50');
+            titleText.setAttribute('y', coverUrl ? '160' : '150');
+            titleText.setAttribute('font-family', 'Microsoft YaHei');
+            titleText.setAttribute('font-size', '16');
+            titleText.setAttribute('font-weight', 'bold');
+            titleText.setAttribute('fill', '#000000');
+            titleText.setAttribute('contenteditable', 'true');
+            titleText.textContent = title;
+            bookGroup.appendChild(titleText);
+            
+            // 作者信息
+            if (author) {
+                const authorText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                authorText.setAttribute('x', coverUrl ? '140' : '50');
+                authorText.setAttribute('y', coverUrl ? '185' : '180');
+                authorText.setAttribute('font-family', 'Microsoft YaHei');
+                authorText.setAttribute('font-size', '14');
+                authorText.setAttribute('fill', '#6c757d');
+                authorText.setAttribute('contenteditable', 'true');
+                authorText.textContent = `作者: ${author}`;
+                bookGroup.appendChild(authorText);
+            }
+            
+            // 图书简介
+            if (desc) {
+                const descText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                descText.setAttribute('x', coverUrl ? '140' : '50');
+                descText.setAttribute('y', coverUrl ? '210' : '210');
+                descText.setAttribute('font-family', 'Microsoft YaHei');
+                descText.setAttribute('font-size', '14');
+                descText.setAttribute('fill', '#495057');
+                descText.setAttribute('contenteditable', 'true');
+                descText.textContent = desc;
+                bookGroup.appendChild(descText);
+            }
+            
+            // 添加点击选中事件
+            bookGroup.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectElement(bookGroup);
+            });
+            
+            svg.appendChild(bookGroup);
+            
+            // 添加到状态中
+            editorState.elements.push({
+                id: Date.now(),
+                type: 'book',
+                element: bookGroup,
+                content: JSON.stringify({ coverUrl, title, author, desc }),
+                x: 50,
+                y: 150
+            });
+            
+            saveStateToHistory();
+        }
+        
+        // 显示MD转换面板
+        function showMdConvertPanel() {
+            const panel = document.getElementById('md-convert-panel');
+            panel.style.display = 'block';
+            
+            // 重置表单
+            document.getElementById('md-input').value = '';
+            document.getElementById('md-preview').style.display = 'none';
+            
+            // 隐藏其他面板
+            document.getElementById('image-upload-panel').style.display = 'none';
+            document.getElementById('book-add-panel').style.display = 'none';
+            document.getElementById('publish-panel').style.display = 'none';
+        }
+        
+        // 隐藏MD转换面板
+        function hideMdConvertPanel() {
+            document.getElementById('md-convert-panel').style.display = 'none';
+        }
+        
+        // 预览Markdown
+        function previewMarkdown() {
+            const mdText = document.getElementById('md-input').value;
+            if (mdText.trim() === '') {
+                document.getElementById('md-preview').style.display = 'none';
+                return;
+            }
+            
+            const html = parseMarkdown(mdText);
+            document.getElementById('md-preview').innerHTML = html;
+            document.getElementById('md-preview').style.display = 'block';
+        }
+        
+        // 转换Markdown
+        function convertMarkdown() {
+            const mdText = document.getElementById('md-input').value;
+            if (mdText.trim() === '') {
+                alert('请输入Markdown文本');
+                return;
+            }
+            
+            // 解析Markdown并创建相应元素
+            createElementsFromMarkdown(mdText);
+            
+            // 隐藏面板
+            hideMdConvertPanel();
+        }
+        
+        // 解析Markdown文本
+        function parseMarkdown(text) {
+            let html = text;
+            
+            // 标题 (支持 #, ##, ###)
+            html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+            
+            // 粗体 **text** 或 __text__
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+            
+            // 斜体 *text* 或 _text_
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+            
+            // 行内代码 `code`
+            html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+            
+            // 引用块 > quote
+            html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
+            
+            // 换行
+            html = html.replace(/\n/g, '<br>');
+            
+            // 段落 - 将连续的<br>分组为段落
+            html = html.replace(/(<br>){2,}/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+            html = html.replace(/<p><\/p>/g, '');
+            
+            return html;
+        }
+        
+        // 从Markdown创建元素
+        function createElementsFromMarkdown(mdText) {
+            const lines = mdText.split('\n');
+            const svg = document.getElementById('editor-svg');
+            let currentY = 80;
+            
+            lines.forEach(line => {
+                if (line.startsWith('# ')) {
+                    // 一级标题
+                    const title = createTitleElement();
+                    title.setAttribute('x', '50');
+                    title.setAttribute('y', currentY);
+                    title.textContent = line.substring(2);
+                    svg.appendChild(title);
+                    
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'title',
+                        element: title,
+                        content: line.substring(2),
+                        x: 50,
+                        y: currentY
+                    });
+                    
+                    currentY += 60;
+                } else if (line.startsWith('## ')) {
+                    // 二级标题
+                    const title = createTitleElement();
+                    title.setAttribute('x', '50');
+                    title.setAttribute('y', currentY);
+                    title.setAttribute('font-size', '20');
+                    title.textContent = line.substring(3);
+                    svg.appendChild(title);
+                    
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'title',
+                        element: title,
+                        content: line.substring(3),
+                        x: 50,
+                        y: currentY
+                    });
+                    
+                    currentY += 50;
+                } else if (line.startsWith('### ')) {
+                    // 三级标题
+                    const title = createTitleElement();
+                    title.setAttribute('x', '50');
+                    title.setAttribute('y', currentY);
+                    title.setAttribute('font-size', '18');
+                    title.textContent = line.substring(4);
+                    svg.appendChild(title);
+                    
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'title',
+                        element: title,
+                        content: line.substring(4),
+                        x: 50,
+                        y: currentY
+                    });
+                    
+                    currentY += 40;
+                } else if (line.startsWith('> ')) {
+                    // 引用块
+                    const quote = createQuoteElement();
+                    const textEl = quote.querySelector('text');
+                    textEl.textContent = line.substring(2);
+                    textEl.setAttribute('x', '60');
+                    textEl.setAttribute('y', currentY + 40);
+                    
+                    const rectEl = quote.querySelector('rect');
+                    rectEl.setAttribute('x', '40');
+                    rectEl.setAttribute('y', currentY);
+                    rectEl.setAttribute('width', '500');
+                    rectEl.setAttribute('height', '100');
+                    
+                    svg.appendChild(quote);
+                    
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'blockquote',
+                        element: quote,
+                        content: line.substring(2),
+                        x: 40,
+                        y: currentY
+                    });
+                    
+                    currentY += 120;
+                } else if (line.trim() !== '') {
+                    // 普通文本 - 处理粗体、斜体等
+                    const text = createTextElement();
+                    text.setAttribute('x', '50');
+                    text.setAttribute('y', currentY);
+                    
+                    // 解析粗体和斜体
+                    let processedLine = line;
+                    processedLine = processedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    processedLine = processedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                    
+                    text.textContent = processedLine;
+                    svg.appendChild(text);
+                    
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'text',
+                        element: text,
+                        content: processedLine,
+                        x: 50,
+                        y: currentY
+                    });
+                    
+                    currentY += 30;
+                }
+            });
+            
+            saveStateToHistory();
+        }
+        
+        // 显示发布面板
+        function showPublishPanel() {
+            document.getElementById('publish-panel').style.display = 'block';
+            
+            // 从当前画布内容中预填充一些字段
+            const firstTitleElement = editorState.elements.find(el => el.type === 'title');
+            if (firstTitleElement) {
+                document.getElementById('article-title').value = firstTitleElement.content;
+            }
+            
+            // 从当前画布内容生成摘要
+            const textElements = editorState.elements.filter(el => el.type === 'text');
+            if (textElements.length > 0) {
+                const firstText = textElements[0].content;
+                document.getElementById('article-summary').value = firstText.substring(0, 100) + '...';
+            }
+            
+            // 隐藏其他面板
+            document.getElementById('image-upload-panel').style.display = 'none';
+            document.getElementById('book-add-panel').style.display = 'none';
+            document.getElementById('md-convert-panel').style.display = 'none';
+        }
+        
+        // 隐藏发布面板
+        function hidePublishPanel() {
+            document.getElementById('publish-panel').style.display = 'none';
+        }
+        
+        // 发布到微信公众号
+        function publishToWeChat() {
+            const title = document.getElementById('article-title').value.trim();
+            const author = document.getElementById('article-author').value.trim();
+            const summary = document.getElementById('article-summary').value.trim();
+            const cover = document.getElementById('article-cover').value.trim();
+            const isOriginal = document.getElementById('is-original').checked;
+            
+            if (!title) {
+                alert('请输入文章标题');
+                return;
+            }
+            
+            // 将画布内容转换为微信公众号编辑器可以理解的格式
+            const content = convertCanvasToWeChatFormat();
+            
+            // 显示发布确认信息
+            const confirmMsg = `即将发布文章：
+            \n标题: ${title}
+作者: ${author}
+摘要: ${summary}
+封面图: ${cover || '无'}
+是否原创: ${isOriginal ? '是' : '否'}
+            \n内容预览:\n${content.substring(0, 200)}...`;
+            
+            if (confirm(confirmMsg)) {
+                // 这里将集成原始的微信公众号发布代码
+                // 为了演示，我们使用模拟函数
+                simulateWeChatPublish(title, author, summary, cover, isOriginal, content);
+            }
+        }
+        
+        // 模拟微信公众号发布
+        function simulateWeChatPublish(title, author, summary, cover, isOriginal, content) {
+            // 显示发布状态
+            const statusDiv = document.createElement('div');
+            statusDiv.id = 'publish-status';
+            statusDiv.innerHTML = '<div style="position: fixed; top: 20px; right: 20px; background: #17a2b8; color: white; padding: 15px; border-radius: 5px; z-index: 10000; font-family: Microsoft YaHei;">正在准备发布...</div>';
+            document.body.appendChild(statusDiv);
+            
+            // 将文章数据存储在 localStorage 中，以便 Python 脚本可以访问
+            const articleData = {
+                title: title,
+                author: author,
+                summary: summary,
+                cover: cover,
+                isOriginal: isOriginal,
+                content: content,
+                timestamp: new Date().getTime()
+            };
+            
+            localStorage.setItem('wechatArticleData', JSON.stringify(articleData));
+            
+            // 模拟发布过程
+            setTimeout(() => {
+                document.getElementById('publish-status').innerHTML = '<div style="position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px; border-radius: 5px; z-index: 10000; font-family: Microsoft YaHei;">发布成功！<br>标题: ' + title + '</div>';
+                
+                // 3秒后移除状态提示
+                setTimeout(() => {
+                    if (document.getElementById('publish-status')) {
+                        document.body.removeChild(document.getElementById('publish-status'));
+                    }
+                }, 3000);
+                
+                console.log('发布文章到微信公众号:', {
+                    title,
+                    author,
+                    summary,
+                    cover,
+                    isOriginal,
+                    content
+                });
+                
+                // 隐藏发布面板
+                hidePublishPanel();
+            }, 2000);
+        }
+        
+        // 过滤组件和模板
+        function filterComponentsAndTemplates(searchTerm) {
+            // 过滤组件
+            document.querySelectorAll('.component-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // 过滤默认模板
+            document.querySelectorAll('.template-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // 过滤已保存的模板
+            document.querySelectorAll('.saved-template-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+        
+        // 创建元素
+        function createElement(type) {
+            const svg = document.getElementById('editor-svg');
+            let element;
+            
+            switch(type) {
+                case 'title':
+                    element = createTitleElement();
+                    break;
+                case 'text':
+                    element = createTextElement();
+                    break;
+                case 'image':
+                    element = createImageElement();
+                    break;
+                case 'divider':
+                    element = createDividerElement();
+                    break;
+                case 'blockquote':
+                    element = createQuoteElement();
+                    break;
+                case 'list':
+                    element = createListElement();
+                    break;
+                case 'highlight':
+                    element = createHighlightElement();
+                    break;
+                default:
+                    return;
+            }
+            
+            // 添加点击选中事件
+            element.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectElement(element);
+            });
+            
+            svg.appendChild(element);
+            editorState.elements.push({
+                id: Date.now(),
+                type: type,
+                element: element,
+                content: element.textContent || element.getAttribute('href') || '',
+                x: parseInt(element.getAttribute('x')) || 0,
+                y: parseInt(element.getAttribute('y')) || 0
+            });
+            
+            saveStateToHistory();
+        }
+        
+        // 创建高亮文本元素
+        function createHighlightElement() {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', '50');
+            text.setAttribute('y', '130');
+            text.setAttribute('font-family', 'Microsoft YaHei');
+            text.setAttribute('font-size', '16');
+            text.setAttribute('fill', '#ffffff');
+            text.setAttribute('text-anchor', 'start');
+            text.setAttribute('contenteditable', 'true');
+            text.textContent = '高亮文本';
+            text.classList.add('element');
+            
+            // 添加背景矩形
+            const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bgRect.setAttribute('x', '45');
+            bgRect.setAttribute('y', '115');
+            bgRect.setAttribute('width', '100');
+            bgRect.setAttribute('height', '25');
+            bgRect.setAttribute('fill', '#ff6b6b');
+            bgRect.setAttribute('rx', '4');
+            bgRect.setAttribute('ry', '4');
+            
+            // 创建组以包含矩形背景和文本
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.appendChild(bgRect);
+            g.appendChild(text);
+            g.classList.add('element');
+            
+            // 添加事件到组
+            g.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectElement(g);
+            });
+            
+            // 文本编辑事件
+            text.addEventListener('blur', function() {
+                // 更新背景矩形大小
+                const bbox = text.getBBox();
+                bgRect.setAttribute('x', bbox.x - 5);
+                bgRect.setAttribute('y', bbox.y - 5);
+                bgRect.setAttribute('width', bbox.width + 10);
+                bgRect.setAttribute('height', bbox.height + 10);
+                
+                updateElementData(g);
+            });
+            
+            // 键盘事件
+            text.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const newText = createTextElement();
+                    newText.setAttribute('x', text.getAttribute('x'));
+                    newText.setAttribute('y', (parseInt(text.getAttribute('y')) + 30).toString());
+                    newText.textContent = '';
+                    newText.focus();
+                    
+                    const svg = document.getElementById('editor-svg');
+                    svg.appendChild(newText);
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'text',
+                        element: newText,
+                        content: '',
+                        x: parseInt(newText.getAttribute('x')),
+                        y: parseInt(newText.getAttribute('y'))
+                    });
+                    
+                    selectElement(newText);
+                    saveStateToHistory();
+                }
+            });
+            
+            return g;
+        }
+        
+        // 创建标题元素
+        function createTitleElement() {
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            title.setAttribute('x', '50');
+            title.setAttribute('y', '80');
+            title.setAttribute('font-family', 'Microsoft YaHei');
+            title.setAttribute('font-size', '24');
+            title.setAttribute('font-weight', 'bold');
+            title.setAttribute('fill', '#000000');
+            title.setAttribute('text-anchor', 'start');
+            title.setAttribute('contenteditable', 'true');
+            title.textContent = '标题';
+            title.classList.add('element');
+            
+            title.addEventListener('blur', function() {
+                updateElementData(title);
+            });
+            
+            // 添加键盘事件处理
+            title.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const newText = createTextElement();
+                    newText.setAttribute('x', title.getAttribute('x'));
+                    newText.setAttribute('y', (parseInt(title.getAttribute('y')) + 50).toString());
+                    newText.textContent = '';
+                    newText.focus();
+                    
+                    const svg = document.getElementById('editor-svg');
+                    svg.appendChild(newText);
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'text',
+                        element: newText,
+                        content: '',
+                        x: parseInt(newText.getAttribute('x')),
+                        y: parseInt(newText.getAttribute('y'))
+                    });
+                    
+                    selectElement(newText);
+                    saveStateToHistory();
+                }
+            });
+            
+            return title;
+        }
+        
+        // 创建文本元素
+        function createTextElement() {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', '50');
+            text.setAttribute('y', '130');
+            text.setAttribute('font-family', 'Microsoft YaHei');
+            text.setAttribute('font-size', '16');
+            text.setAttribute('fill', '#000000');
+            text.setAttribute('text-anchor', 'start');
+            text.setAttribute('contenteditable', 'true');
+            text.textContent = '点击编辑文本';
+            text.classList.add('element');
+            
+            // 添加文本编辑完成事件
+            text.addEventListener('blur', function() {
+                updateElementData(text);
+            });
+            
+            // 添加键盘事件处理
+            text.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // 创建新文本元素
+                    const newText = createTextElement();
+                    newText.setAttribute('x', text.getAttribute('x'));
+                    newText.setAttribute('y', (parseInt(text.getAttribute('y')) + 30).toString());
+                    newText.textContent = '';
+                    newText.focus();
+                    
+                    const svg = document.getElementById('editor-svg');
+                    svg.appendChild(newText);
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'text',
+                        element: newText,
+                        content: '',
+                        x: parseInt(newText.getAttribute('x')),
+                        y: parseInt(newText.getAttribute('y'))
+                    });
+                    
+                    selectElement(newText);
+                    saveStateToHistory();
+                }
+            });
+            
+            return text;
+        }
+        
+        // 创建列表元素
+        function createListElement() {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.classList.add('element');
+            
+            // 创建列表项
+            for (let i = 0; i < 3; i++) {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', '50');
+                text.setAttribute('y', (130 + i * 30).toString());
+                text.setAttribute('font-family', 'Microsoft YaHei');
+                text.setAttribute('font-size', '16');
+                text.setAttribute('fill', '#000000');
+                text.setAttribute('contenteditable', 'true');
+                
+                if (i === 0) {
+                    text.textContent = '• 列表项 1';
+                } else {
+                    text.textContent = '• 列表项 ' + (i + 1);
+                }
+                
+                g.appendChild(text);
+            }
+            
+            // 添加点击选中事件到组中的所有文本
+            const texts = g.querySelectorAll('text');
+            texts.forEach(text => {
+                text.addEventListener('blur', function() {
+                    updateElementData(g);
+                });
+                
+                text.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const nextY = parseInt(text.getAttribute('y')) + 30;
+                        const newText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        newText.setAttribute('x', text.getAttribute('x'));
+                        newText.setAttribute('y', nextY.toString());
+                        newText.setAttribute('font-family', 'Microsoft YaHei');
+                        newText.setAttribute('font-size', '16');
+                        newText.setAttribute('fill', '#000000');
+                        newText.setAttribute('contenteditable', 'true');
+                        newText.textContent = '• 新列表项';
+                        newText.focus();
+                        
+                        g.appendChild(newText);
+                        editorState.elements.push({
+                            id: Date.now(),
+                            type: 'list-item',
+                            element: newText,
+                            content: '• 新列表项',
+                            x: parseInt(newText.getAttribute('x')),
+                            y: parseInt(newText.getAttribute('y'))
+                        });
+                        
+                        updateElementData(g);
+                        saveStateToHistory();
+                    }
+                });
+            });
+            
+            return g;
+        }
+        
+        // 创建图片元素
+        function createImageElement() {
+            const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            image.setAttribute('x', '50');
+            image.setAttribute('y', '150');
+            image.setAttribute('width', '300');
+            image.setAttribute('height', '200');
+            image.setAttribute('href', 'https://via.placeholder.com/300x200.png');
+            image.classList.add('element');
+            
+            // 图片点击事件 - 更换图片
+            image.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectElement(image);
+                const newSrc = prompt('请输入图片URL:', image.getAttribute('href'));
+                if (newSrc) {
+                    image.setAttribute('href', newSrc);
+                    updateElementData(image);
+                    saveStateToHistory();
+                }
+            });
+            
+            return image;
+        }
+        
+        // 创建分割线元素
+        function createDividerElement() {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', '50');
+            line.setAttribute('y1', '200');
+            line.setAttribute('x2', '700');
+            line.setAttribute('y2', '200');
+            line.setAttribute('stroke', '#000000');
+            line.setAttribute('stroke-width', '1');
+            line.classList.add('element');
+            
+            return line;
+        }
+        
+        // 创建引用块元素
+        function createQuoteElement() {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.classList.add('element');
+            
+            // 创建引用背景
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', '40');
+            rect.setAttribute('y', '220');
+            rect.setAttribute('width', '500');
+            rect.setAttribute('height', '100');
+            rect.setAttribute('fill', '#f8f9fa');
+            rect.setAttribute('stroke', '#dee2e6');
+            rect.setAttribute('stroke-width', '1');
+            rect.setAttribute('rx', '4');
+            rect.setAttribute('ry', '4');
+            
+            // 创建引用文本
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', '60');
+            text.setAttribute('y', '260');
+            text.setAttribute('font-family', 'Microsoft YaHei');
+            text.setAttribute('font-size', '14');
+            text.setAttribute('fill', '#6c757d');
+            text.setAttribute('contenteditable', 'true');
+            text.textContent = '这是引用块内容，用于突出显示重要观点或引用他人的话语。';
+            
+            g.appendChild(rect);
+            g.appendChild(text);
+            
+            text.addEventListener('blur', function() {
+                updateElementData(g);
+            });
+            
+            // 添加键盘事件处理
+            text.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const newText = createTextElement();
+                    newText.setAttribute('x', text.getAttribute('x'));
+                    newText.setAttribute('y', (parseInt(text.getAttribute('y')) + 30).toString());
+                    newText.textContent = '';
+                    newText.focus();
+                    
+                    const svg = document.getElementById('editor-svg');
+                    svg.appendChild(newText);
+                    editorState.elements.push({
+                        id: Date.now(),
+                        type: 'text',
+                        element: newText,
+                        content: '',
+                        x: parseInt(newText.getAttribute('x')),
+                        y: parseInt(newText.getAttribute('y'))
+                    });
+                    
+                    selectElement(newText);
+                    saveStateToHistory();
+                }
+            });
+            
+            return g;
+        }
+        
+        // 选择元素
+        function selectElement(element) {
+            // 清除之前的选择
+            document.querySelectorAll('.element').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // 选中当前元素
+            element.classList.add('selected');
+            editorState.selectedElement = element;
+        }
+        
+        // 更新元素数据
+        function updateElementData(element) {
+            const elementObj = editorState.elements.find(el => {
+                if (el.element === element) return true;
+                // 对于组合元素，检查其子元素
+                if (element.tagName === 'g' && el.element.tagName === 'g') {
+                    return element.isSameNode(el.element);
+                }
+                return false;
+            });
+            
+            if (elementObj) {
+                if (element.tagName === 'image') {
+                    elementObj.content = element.getAttribute('href');
+                    elementObj.x = parseInt(element.getAttribute('x')) || 0;
+                    elementObj.y = parseInt(element.getAttribute('y')) || 0;
+                    elementObj.width = parseInt(element.getAttribute('width')) || 300;
+                    elementObj.height = parseInt(element.getAttribute('height')) || 200;
+                } else if (element.tagName === 'g' && element.getAttribute('data-type') === 'book') {
+                    // 图书元素的处理
+                    const coverImage = element.querySelector('image');
+                    const titleText = element.querySelector('text');
+                    const authorText = element.querySelectorAll('text')[1];
+                    const descText = element.querySelectorAll('text')[2];
+                    
+                    const bookData = {
+                        coverUrl: coverImage ? coverImage.getAttribute('href') : '',
+                        title: titleText ? titleText.textContent : '',
+                        author: authorText ? authorText.textContent.replace('作者: ', '') : '',
+                        desc: descText ? descText.textContent : ''
+                    };
+                    
+                    elementObj.content = JSON.stringify(bookData);
+                    elementObj.x = parseInt(element.getAttribute('x')) || 0;
+                    elementObj.y = parseInt(element.getAttribute('y')) || 0;
+                } else if (element.tagName === 'g') {
+                    // 对于组合元素，获取第一个文本子元素的内容
+                    const textEl = element.querySelector('text');
+                    elementObj.content = textEl ? textEl.textContent : '';
+                    elementObj.x = parseInt(textEl ? textEl.getAttribute('x') : element.querySelector('rect').getAttribute('x')) || 0;
+                    elementObj.y = parseInt(textEl ? textEl.getAttribute('y') : element.querySelector('rect').getAttribute('y')) || 0;
+                } else {
+                    elementObj.content = element.textContent || '';
+                    elementObj.x = parseInt(element.getAttribute('x')) || 0;
+                    elementObj.y = parseInt(element.getAttribute('y')) || 0;
+                }
+            }
+        }
+        
+        // 保存状态到历史记录
+        function saveStateToHistory() {
+            // 截断历史记录（撤销后添加新操作时，清除后续历史）
+            editorState.history = editorState.history.slice(0, editorState.historyIndex + 1);
+            
+            // 保存当前状态
+            const currentState = JSON.parse(JSON.stringify({
+                elements: editorState.elements.map(el => ({
+                    ...el,
+                    element: null // 不保存DOM元素引用
+                }))
+            }));
+            
+            editorState.history.push(currentState);
+            editorState.historyIndex = editorState.history.length - 1;
+        }
+        
+        // 撤销功能
+        function undo() {
+            if (editorState.historyIndex > 0) {
+                editorState.historyIndex--;
+                restoreStateFromHistory();
+            }
+        }
+        
+        // 重做功能
+        function redo() {
+            if (editorState.historyIndex < editorState.history.length - 1) {
+                editorState.historyIndex++;
+                restoreStateFromHistory();
+            }
+        }
+        
+        // 从历史记录恢复状态
+        function restoreStateFromHistory() {
+            const state = editorState.history[editorState.historyIndex];
+            if (!state) return;
+            
+            clearCanvasWithoutHistory();
+            
+            const svg = document.getElementById('editor-svg');
+            editorState.elements = [];
+            
+            state.elements.forEach(elData => {
+                let element;
+                
+                switch(elData.type) {
+                    case 'title':
+                        element = createTitleElement();
+                        element.setAttribute('x', elData.x || 50);
+                        element.setAttribute('y', elData.y || 80);
+                        element.setAttribute('font-size', elData.fontSize || '24');
+                        if (elData.fontWeight) element.setAttribute('font-weight', elData.fontWeight);
+                        element.textContent = elData.content || '标题';
+                        break;
+                    case 'text':
+                        element = createTextElement();
+                        element.setAttribute('x', elData.x || 50);
+                        element.setAttribute('y', elData.y || 130);
+                        element.setAttribute('font-size', elData.fontSize || '16');
+                        if (elData.fontWeight) element.setAttribute('font-weight', elData.fontWeight);
+                        if (elData.fontStyle) element.setAttribute('font-style', elData.fontStyle);
+                        if (elData.fill) element.setAttribute('fill', elData.fill);
+                        if (elData.textAnchor) element.setAttribute('text-anchor', elData.textAnchor);
+                        element.textContent = elData.content || '点击编辑文本';
+                        break;
+                    case 'image':
+                        element = createImageElement();
+                        element.setAttribute('x', elData.x || 50);
+                        element.setAttribute('y', elData.y || 150);
+                        element.setAttribute('width', elData.width || '300');
+                        element.setAttribute('height', elData.height || '200');
+                        element.setAttribute('href', elData.content || 'https://via.placeholder.com/300x200.png');
+                        break;
+                    case 'divider':
+                        element = createDividerElement();
+                        element.setAttribute('x1', elData.x1 || 50);
+                        element.setAttribute('y1', elData.y1 || 200);
+                        element.setAttribute('x2', elData.x2 || 700);
+                        element.setAttribute('y2', elData.y2 || 200);
+                        break;
+                    case 'blockquote':
+                        element = createQuoteElement();
+                        const rect = element.querySelector('rect');
+                        const text = element.querySelector('text');
+                        const y = elData.y || 250;
+                        rect.setAttribute('x', elData.x || 40);
+                        rect.setAttribute('y', y - 30);
+                        rect.setAttribute('width', '500');
+                        rect.setAttribute('height', '100');
+                        text.setAttribute('x', (elData.x + 20) || 60);
+                        text.setAttribute('y', y);
+                        text.setAttribute('font-size', elData.fontSize || '14');
+                        text.textContent = elData.content || '这是引用块内容，用于突出显示重要观点或引用他人的话语。';
+                        break;
+                    case 'highlight':
+                        element = createHighlightElement();
+                        const g = element;
+                        const bgRect = g.querySelector('rect');
+                        const textEl = g.querySelector('text');
+                        textEl.setAttribute('x', elData.x || 50);
+                        textEl.setAttribute('y', elData.y || 130);
+                        textEl.setAttribute('font-size', elData.fontSize || '16');
+                        if (elData.fontWeight) textEl.setAttribute('font-weight', elData.fontWeight);
+                        if (elData.fontStyle) textEl.setAttribute('font-style', elData.fontStyle);
+                        if (elData.fill) textEl.setAttribute('fill', elData.fill);
+                        textEl.textContent = elData.content || '高亮文本';
+                        // 更新背景矩形
+                        const bbox = textEl.getBBox();
+                        bgRect.setAttribute('x', bbox.x - 5);
+                        bgRect.setAttribute('y', bbox.y - 5);
+                        bgRect.setAttribute('width', bbox.width + 10);
+                        bgRect.setAttribute('height', bbox.height + 10);
+                        if (elData.bgFill) bgRect.setAttribute('fill', elData.bgFill);
+                        break;
+                    case 'book':
+                        try {
+                            const bookData = JSON.parse(elData.content);
+                            element = createBookElementFromData(bookData, elData.x || 50, elData.y || 150);
+                        } catch (e) {
+                            console.error('解析图书数据失败:', e);
+                            // 创建默认图书元素
+                            element = createBookElement('', '图书标题', '作者', '图书简介');
+                        }
+                        break;
+                    case 'list-item':
+                        // 列表项特殊处理，会作为列表的一部分
+                        element = createTextElement();
+                        element.setAttribute('x', elData.x || 50);
+                        element.setAttribute('y', elData.y || 130);
+                        element.setAttribute('font-size', elData.fontSize || '16');
+                        element.textContent = elData.content || '• 列表项';
+                        break;
+                }
+                
+                if (element) {
+                    element.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        selectElement(element);
+                    });
+                    
+                    svg.appendChild(element);
+                    editorState.elements.push({
+                        id: elData.id || Date.now() + Math.random(),
+                        type: elData.type,
+                        element: element,
+                        content: elData.content,
+                        x: elData.x || 0,
+                        y: elData.y || 0
+                    });
+                }
+            });
+        }
+        
+        // 从数据创建图书元素
+        function createBookElementFromData(bookData, x, y) {
+            const svg = document.getElementById('editor-svg');
+            
+            // 创建图书信息组合元素
+            const bookGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            bookGroup.setAttribute('class', 'element');
+            bookGroup.setAttribute('data-type', 'book');
+            
+            // 图书封面图片
+            if (bookData.coverUrl) {
+                const coverImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                coverImage.setAttribute('x', x);
+                coverImage.setAttribute('y', y);
+                coverImage.setAttribute('width', '80');
+                coverImage.setAttribute('height', '100');
+                coverImage.setAttribute('href', bookData.coverUrl);
+                bookGroup.appendChild(coverImage);
+            }
+            
+            // 图书标题
+            const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            titleText.setAttribute('x', bookData.coverUrl ? x + 90 : x);
+            titleText.setAttribute('y', bookData.coverUrl ? y + 10 : y);
+            titleText.setAttribute('font-family', 'Microsoft YaHei');
+            titleText.setAttribute('font-size', '16');
+            titleText.setAttribute('font-weight', 'bold');
+            titleText.setAttribute('fill', '#000000');
+            titleText.setAttribute('contenteditable', 'true');
+            titleText.textContent = bookData.title || '图书标题';
+            bookGroup.appendChild(titleText);
+            
+            // 作者信息
+            if (bookData.author) {
+                const authorText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                authorText.setAttribute('x', bookData.coverUrl ? x + 90 : x);
+                authorText.setAttribute('y', bookData.coverUrl ? y + 35 : y + 25);
+                authorText.setAttribute('font-family', 'Microsoft YaHei');
+                authorText.setAttribute('font-size', '14');
+                authorText.setAttribute('fill', '#6c757d');
+                authorText.setAttribute('contenteditable', 'true');
+                authorText.textContent = `作者: ${bookData.author}`;
+                bookGroup.appendChild(authorText);
+            }
+            
+            // 图书简介
+            if (bookData.desc) {
+                const descText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                descText.setAttribute('x', bookData.coverUrl ? x + 90 : x);
+                descText.setAttribute('y', bookData.coverUrl ? y + 60 : y + 50);
+                descText.setAttribute('font-family', 'Microsoft YaHei');
+                descText.setAttribute('font-size', '14');
+                descText.setAttribute('fill', '#495057');
+                descText.setAttribute('contenteditable', 'true');
+                descText.textContent = bookData.desc;
+                bookGroup.appendChild(descText);
+            }
+            
+            // 添加点击选中事件
+            bookGroup.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectElement(bookGroup);
+            });
+            
+            return bookGroup;
+        }
+        
+        // 清空画布（不保存到历史记录）
+        function clearCanvasWithoutHistory() {
+            const svg = document.getElementById('editor-svg');
+            // 保留背景rect
+            const background = svg.querySelector('rect');
+            svg.innerHTML = '';
+            if (background) {
+                svg.appendChild(background);
+            }
+            editorState.elements = [];
+            editorState.selectedElement = null;
+        }
+        
+        // 加载模板
+        function loadTemplate(templateType) {
+            let template;
+            
+            switch(templateType) {
+                case 'default':
+                    template = getDefaultTemplate();
+                    break;
+                case 'image':
+                    template = getImageTemplate();
+                    break;
+                case 'book':
+                    template = getBookTemplate();
+                    break;
+                case 'md':
+                    template = getMdTemplate();
+                    break;
+                default:
+                    return;
+            }
+            
+            loadTemplateData(template);
+            editorState.currentTemplate = templateType;
+        }
+        
+        // 获取默认模板
+        function getDefaultTemplate() {
+            return {
+                name: '基础排版',
+                description: '简单的标题+正文布局',
+                elements: [
+                    {
+                        type: 'title',
+                        x: 50,
+                        y: 80,
+                        content: '文章标题',
+                        fontSize: '24',
+                        fontWeight: 'bold'
+                    },
+                    {
+                        type: 'text',
+                        x: 50,
+                        y: 150,
+                        content: '这里是文章正文内容，您可以在这里编辑文本...',
+                        fontSize: '16'
+                    }
+                ]
+            };
+        }
+        
+        // 获取图片模板
+        function getImageTemplate() {
+            return {
+                name: '图片排版',
+                description: '图片+文字描述布局',
+                elements: [
+                    {
+                        type: 'title',
+                        x: 50,
+                        y: 80,
+                        content: '图片标题',
+                        fontSize: '24',
+                        fontWeight: 'bold'
+                    },
+                    {
+                        type: 'image',
+                        x: 50,
+                        y: 150,
+                        content: 'https://via.placeholder.com/600x400.png',
+                        width: '600',
+                        height: '400'
+                    },
+                    {
+                        type: 'text',
+                        x: 50,
+                        y: 580,
+                        content: '图片描述文字',
+                        fontSize: '14'
+                    }
+                ]
+            };
+        }
+        
+        // 获取图书模板
+        function getBookTemplate() {
+            return {
+                name: '图书介绍',
+                description: '多本书籍介绍布局',
+                elements: [
+                    {
+                        type: 'title',
+                        x: 50,
+                        y: 80,
+                        content: '推荐好书',
+                        fontSize: '28',
+                        fontWeight: 'bold'
+                    },
+                    {
+                        type: 'book',
+                        x: 50,
+                        y: 150,
+                        content: JSON.stringify({
+                            coverUrl: 'https://via.placeholder.com/80x100.png',
+                            title: '《书籍名称》',
+                            author: '作者名',
+                            desc: '这是一本非常棒的书籍，内容丰富，值得一读。'
+                        })
+                    },
+                    {
+                        type: 'book',
+                        x: 50,
+                        y: 300,
+                        content: JSON.stringify({
+                            coverUrl: 'https://via.placeholder.com/80x100.png',
+                            title: '《另一本书》',
+                            author: '另一位作者',
+                            desc: '这本书也很不错，推荐给大家。'
+                        })
+                    }
+                ]
+            };
+        }
+        
+        // 获取MD优化模板
+        function getMdTemplate() {
+            return {
+                name: 'MD优化',
+                description: 'Markdown格式优化模板',
+                elements: [
+                    {
+                        type: 'title',
+                        x: 50,
+                        y: 80,
+                        content: '# 标题',
+                        fontSize: '24',
+                        fontWeight: 'bold'
+                    },
+                    {
+                        type: 'text',
+                        x: 50,
+                        y: 130,
+                        content: '这是一段**粗体**和*斜体*的文本。',
+                        fontSize: '16'
+                    },
+                    {
+                        type: 'blockquote',
+                        x: 40,
+                        y: 180,
+                        content: '这是一个引用块',
+                        fontSize: '14'
+                    },
+                    {
+                        type: 'text',
+                        x: 50,
+                        y: 280,
+                        content: '## 二级标题',
+                        fontSize: '20',
+                        fontWeight: 'bold'
+                    },
+                    {
+                        type: 'text',
+                        x: 50,
+                        y: 320,
+                        content: '这是正文内容，支持`行内代码`。',
+                        fontSize: '16'
+                    }
+                ]
+            };
+        }
+        
+        // 加载模板数据
+        function loadTemplateData(template) {
+            clearCanvas();
+            
+            const svg = document.getElementById('editor-svg');
+            editorState.elements = [];
+            
+            template.elements.forEach(el => {
+                let element;
+                
+                switch(el.type) {
+                    case 'title':
+                        element = createTitleElement();
+                        element.setAttribute('x', el.x);
+                        element.setAttribute('y', el.y);
+                        element.setAttribute('font-size', el.fontSize || '24');
+                        if (el.fontWeight) element.setAttribute('font-weight', el.fontWeight);
+                        element.textContent = el.content;
+                        break;
+                    case 'text':
+                        element = createTextElement();
+                        element.setAttribute('x', el.x);
+                        element.setAttribute('y', el.y);
+                        element.setAttribute('font-size', el.fontSize || '16');
+                        if (el.fontWeight) element.setAttribute('font-weight', el.fontWeight);
+                        if (el.fontStyle) element.setAttribute('font-style', el.fontStyle);
+                        if (el.fill) element.setAttribute('fill', el.fill);
+                        if (el.textAnchor) element.setAttribute('text-anchor', el.textAnchor);
+                        element.textContent = el.content;
+                        break;
+                    case 'image':
+                        element = createImageElement();
+                        element.setAttribute('x', el.x);
+                        element.setAttribute('y', el.y);
+                        element.setAttribute('width', el.width || '300');
+                        element.setAttribute('height', el.height || '200');
+                        element.setAttribute('href', el.content);
+                        break;
+                    case 'divider':
+                        element = createDividerElement();
+                        element.setAttribute('x1', el.x1 || 50);
+                        element.setAttribute('y1', el.y1 || 200);
+                        element.setAttribute('x2', el.x2 || 700);
+                        element.setAttribute('y2', el.y2 || 200);
+                        break;
+                    case 'blockquote':
+                        element = createQuoteElement();
+                        const rect = element.querySelector('rect');
+                        const text = element.querySelector('text');
+                        rect.setAttribute('x', el.x || 40);
+                        rect.setAttribute('y', (el.y - 30) || 220);
+                        rect.setAttribute('width', '500');
+                        rect.setAttribute('height', '100');
+                        text.setAttribute('x', (el.x + 20) || 60);
+                        text.setAttribute('y', el.y || 250);
+                        text.setAttribute('font-size', el.fontSize || '14');
+                        text.textContent = el.content;
+                        break;
+                    case 'highlight':
+                        element = createHighlightElement();
+                        const g = element;
+                        const bgRect = g.querySelector('rect');
+                        const textEl = g.querySelector('text');
+                        textEl.setAttribute('x', el.x || 50);
+                        textEl.setAttribute('y', el.y || 130);
+                        textEl.setAttribute('font-size', el.fontSize || '16');
+                        if (el.fontWeight) textEl.setAttribute('font-weight', el.fontWeight);
+                        if (el.fontStyle) textEl.setAttribute('font-style', el.fontStyle);
+                        if (el.fill) textEl.setAttribute('fill', el.fill);
+                        textEl.textContent = el.content;
+                        // 更新背景矩形
+                        const bbox = textEl.getBBox();
+                        bgRect.setAttribute('x', bbox.x - 5);
+                        bgRect.setAttribute('y', bbox.y - 5);
+                        bgRect.setAttribute('width', bbox.width + 10);
+                        bgRect.setAttribute('height', bbox.height + 10);
+                        if (el.bgFill) bgRect.setAttribute('fill', el.bgFill);
+                        break;
+                    case 'book':
+                        try {
+                            const bookData = JSON.parse(el.content);
+                            element = createBookElementFromData(bookData, el.x, el.y);
+                        } catch (e) {
+                            console.error('解析图书数据失败:', e);
+                            // 创建默认图书元素
+                            element = createBookElement('', '图书标题', '作者', '图书简介');
+                        }
+                        break;
+                }
+                
+                if (element) {
+                    element.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        selectElement(element);
+                    });
+                    
+                    svg.appendChild(element);
+                    editorState.elements.push({
+                        id: Date.now() + Math.random(),
+                        type: el.type,
+                        element: element,
+                        content: el.content,
+                        x: el.x || 0,
+                        y: el.y || 0
+                    });
+                }
+            });
+            
+            saveStateToHistory();
+        }
+        
+        // 显示保存模板模态框
+        function showSaveTemplateModal() {
+            document.getElementById('save-template-modal').style.display = 'block';
+        }
+        
+        // 隐藏保存模板模态框
+        function hideSaveTemplateModal() {
+            document.getElementById('save-template-modal').style.display = 'none';
+            document.getElementById('template-name').value = '';
+            document.getElementById('template-desc').value = '';
+            document.getElementById('template-tags').value = '';
+        }
+        
+        // 加载已保存的模板到侧边栏
+        function loadSavedTemplatesToSidebar() {
+            const container = document.getElementById('saved-templates-container');
+            container.innerHTML = '';
+            
+            const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+            
+            if (savedTemplates.length === 0) {
+                container.innerHTML = '<p style="color: #999; font-size: 14px; padding: 10px 0;">暂无保存的模板</p>';
+                return;
+            }
+            
+            savedTemplates.slice(0, 5).forEach((template, index) => {
+                const templateDiv = document.createElement('div');
+                templateDiv.className = 'saved-template-item';
+                templateDiv.innerHTML = `
+                    <h5>${template.name}</h5>
+                    <p>${template.description || '无描述'}</p>
+                    <div class="actions">
+                        <button class="btn-load" onclick="loadSavedTemplate(${index})">加载</button>
+                        <button class="btn-edit" onclick="editSavedTemplate(${index})">编辑</button>
+                        <button class="btn-delete" onclick="deleteSavedTemplate(${index})">删除</button>
+                    </div>
+                `;
+                container.appendChild(templateDiv);
+            });
+            
+            if (savedTemplates.length > 5) {
+                const moreDiv = document.createElement('div');
+                moreDiv.innerHTML = `<button style="width:100%; padding:8px; margin-top:10px;" onclick="document.getElementById('template-manager-modal').style.display='block';loadAllTemplatesToManager();">查看全部 ${savedTemplates.length} 个模板</button>`;
+                container.appendChild(moreDiv);
+            }
+        }
+        
+        // 加载所有模板到管理器
+        function loadAllTemplatesToManager() {
+            const container = document.getElementById('all-templates-list');
+            container.innerHTML = '';
+            
+            const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+            
+            if (savedTemplates.length === 0) {
+                container.innerHTML = '<p>暂无保存的模板</p>';
+                return;
+            }
+            
+            savedTemplates.forEach((template, index) => {
+                const templateDiv = document.createElement('div');
+                templateDiv.className = 'saved-template-item';
+                templateDiv.innerHTML = `
+                    <h5>${template.name}</h5>
+                    <p>${template.description || '无描述'}</p>
+                    <p><small>标签: ${template.tags || '无'}</small></p>
+                    <div class="actions">
+                        <button class="btn-load" onclick="loadSavedTemplateFromManager(${index})">加载</button>
+                        <button class="btn-edit" onclick="editSavedTemplate(${index})">编辑</button>
+                        <button class="btn-delete" onclick="deleteSavedTemplate(${index})">删除</button>
+                    </div>
+                `;
+                container.appendChild(templateDiv);
+            });
+        }
+        
+        // 从管理器加载模板
+        function loadSavedTemplateFromManager(index) {
+            loadSavedTemplate(index);
+            document.getElementById('template-manager-modal').style.display = 'none';
+        }
+        
+        // 加载已保存的模板
+        function loadSavedTemplate(index) {
+            const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+            if (index >= 0 && index < savedTemplates.length) {
+                loadTemplateData(savedTemplates[index]);
+                editorState.currentTemplate = `saved-${index}`;
+            }
+        }
+        
+        // 编辑已保存的模板
+        function editSavedTemplate(index) {
+            const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+            if (index >= 0 && index < savedTemplates.length) {
+                const template = savedTemplates[index];
+                document.getElementById('template-name').value = template.name;
+                document.getElementById('template-desc').value = template.description || '';
+                document.getElementById('template-tags').value = template.tags || '';
+                
+                // 显示模态框并设置为编辑模式
+                document.getElementById('save-template-modal').style.display = 'block';
+                
+                // 临时存储正在编辑的模板索引
+                document.getElementById('confirm-save').setAttribute('data-edit-index', index);
+                document.getElementById('confirm-save').textContent = '更新模板';
+            }
+        }
+        
+        // 删除模板
+        function deleteSavedTemplate(index) {
+            const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+            if (index >= 0 && index < savedTemplates.length) {
+                if (confirm('确定要删除这个模板吗？')) {
+                    savedTemplates.splice(index, 1);
+                    localStorage.setItem('wechatTemplates', JSON.stringify(savedTemplates));
+                    loadSavedTemplatesToSidebar();
+                    loadAllTemplatesToManager();
+                }
+            }
+        }
+        
+        // 保存模板
+        function saveTemplate() {
+            const name = document.getElementById('template-name').value.trim();
+            if (!name) {
+                alert('请输入模板名称');
+                return;
+            }
+            
+            const desc = document.getElementById('template-desc').value.trim();
+            const tags = document.getElementById('template-tags').value.trim();
+            
+            // 获取当前编辑器内容
+            const template = {
+                name: name,
+                description: desc,
+                tags: tags,
+                elements: editorState.elements.map(el => {
+                    const element = el.element;
+                    const attrs = {
+                        type: el.type,
+                        content: el.content,
+                        id: el.id,
+                        x: el.x,
+                        y: el.y
+                    };
+                    
+                    // 获取位置和样式属性
+                    if (element.tagName === 'text' || element.tagName === 'title') {
+                        attrs.x = parseInt(element.getAttribute('x')) || 0;
+                        attrs.y = parseInt(element.getAttribute('y')) || 0;
+                        attrs.fontSize = element.getAttribute('font-size') || '16';
+                        attrs.fontWeight = element.getAttribute('font-weight');
+                        attrs.fontStyle = element.getAttribute('font-style');
+                        attrs.fill = element.getAttribute('fill');
+                        attrs.textAnchor = element.getAttribute('text-anchor');
+                    } else if (element.tagName === 'g' && element.querySelector('rect') && element.querySelector('text')) {
+                        // 高亮文本的处理
+                        const textEl = element.querySelector('text');
+                        attrs.x = parseInt(textEl.getAttribute('x')) || 0;
+                        attrs.y = parseInt(textEl.getAttribute('y')) || 0;
+                        attrs.fontSize = textEl.getAttribute('font-size') || '16';
+                        attrs.fontWeight = textEl.getAttribute('font-weight');
+                        attrs.fontStyle = textEl.getAttribute('font-style');
+                        attrs.fill = textEl.getAttribute('fill');
+                        const bgRect = element.querySelector('rect');
+                        attrs.bgFill = bgRect.getAttribute('fill');
+                    } else if (element.tagName === 'g' && element.getAttribute('data-type') === 'book') {
+                        // 图书元素的处理
+                        const coverImage = element.querySelector('image');
+                        const titleText = element.querySelector('text');
+                        const authorText = element.querySelectorAll('text')[1];
+                        const descText = element.querySelectorAll('text')[2];
+                        
+                        const bookData = {
+                            coverUrl: coverImage ? coverImage.getAttribute('href') : '',
+                            title: titleText ? titleText.textContent : '',
+                            author: authorText ? authorText.textContent.replace('作者: ', '') : '',
+                            desc: descText ? descText.textContent : ''
+                        };
+                        
+                        attrs.content = JSON.stringify(bookData);
+                        attrs.x = parseInt(element.getAttribute('x')) || 0;
+                        attrs.y = parseInt(element.getAttribute('y')) || 0;
+                    } else if (element.tagName === 'image') {
+                        attrs.x = parseInt(element.getAttribute('x')) || 0;
+                        attrs.y = parseInt(element.getAttribute('y')) || 0;
+                        attrs.width = element.getAttribute('width') || '300';
+                        attrs.height = element.getAttribute('height') || '200';
+                        attrs.href = element.getAttribute('href');
+                    } else if (element.tagName === 'line') {
+                        attrs.x1 = parseInt(element.getAttribute('x1')) || 0;
+                        attrs.y1 = parseInt(element.getAttribute('y1')) || 0;
+                        attrs.x2 = parseInt(element.getAttribute('x2')) || 0;
+                        attrs.y2 = parseInt(element.getAttribute('y2')) || 0;
+                    } else if (element.tagName === 'g') {
+                        // 引用块的处理
+                        const textEl = element.querySelector('text');
+                        if (textEl) {
+                            attrs.x = parseInt(textEl.getAttribute('x')) || 0;
+                            attrs.y = parseInt(textEl.getAttribute('y')) || 0;
+                            attrs.fontSize = textEl.getAttribute('font-size') || '14';
+                        }
+                    }
+                    
+                    return attrs;
+                })
+            };
+            
+            // 检查是否正在编辑现有模板
+            const editIndex = document.getElementById('confirm-save').getAttribute('data-edit-index');
+            if (editIndex !== null) {
+                // 更新现有模板
+                const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+                if (editIndex >= 0 && editIndex < savedTemplates.length) {
+                    savedTemplates[editIndex] = template;
+                    localStorage.setItem('wechatTemplates', JSON.stringify(savedTemplates));
+                    alert('模板更新成功！');
+                }
+                // 重置按钮状态
+                document.getElementById('confirm-save').removeAttribute('data-edit-index');
+                document.getElementById('confirm-save').textContent = '保存模板';
+            } else {
+                // 添加新模板
+                const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+                savedTemplates.push(template);
+                localStorage.setItem('wechatTemplates', JSON.stringify(savedTemplates));
+                alert('模板保存成功！');
+            }
+            
+            hideSaveTemplateModal();
+            loadSavedTemplatesToSidebar();
+            loadAllTemplatesToManager();
+        }
+        
+        // 导入模板
+        function importTemplate() {
+            document.getElementById('template-file').click();
+        }
+        
+        // 处理模板文件
+        function handleTemplateFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const template = JSON.parse(e.target.result);
+                    
+                    if (!template.name || !template.elements) {
+                        alert('模板文件格式不正确');
+                        return;
+                    }
+                    
+                    // 保存到本地存储
+                    const savedTemplates = JSON.parse(localStorage.getItem('wechatTemplates') || '[]');
+                    savedTemplates.push(template);
+                    localStorage.setItem('wechatTemplates', JSON.stringify(savedTemplates));
+                    
+                    alert('模板导入成功！');
+                    loadSavedTemplatesToSidebar();
+                    loadAllTemplatesToManager();
+                } catch (error) {
+                    alert('模板文件解析失败，请检查文件格式');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // 导出模板
+        function exportTemplate() {
+            if (editorState.elements.length === 0) {
+                alert('当前画布为空，无法导出模板');
+                return;
+            }
+            
+            const template = {
+                name: `导出模板_${new Date().toLocaleDateString()}`,
+                description: '从当前画布导出的模板',
+                elements: editorState.elements.map(el => {
+                    const element = el.element;
+                    const attrs = {
+                        type: el.type,
+                        content: el.content,
+                        id: el.id,
+                        x: el.x,
+                        y: el.y
+                    };
+                    
+                    // 获取位置和样式属性
+                    if (element.tagName === 'text' || element.tagName === 'title') {
+                        attrs.x = parseInt(element.getAttribute('x')) || 0;
+                        attrs.y = parseInt(element.getAttribute('y')) || 0;
+                        attrs.fontSize = element.getAttribute('font-size') || '16';
+                        attrs.fontWeight = element.getAttribute('font-weight');
+                        attrs.fontStyle = element.getAttribute('font-style');
+                        attrs.fill = element.getAttribute('fill');
+                        attrs.textAnchor = element.getAttribute('text-anchor');
+                    } else if (element.tagName === 'g' && element.querySelector('rect') && element.querySelector('text')) {
+                        // 高亮文本的处理
+                        const textEl = element.querySelector('text');
+                        attrs.x = parseInt(textEl.getAttribute('x')) || 0;
+                        attrs.y = parseInt(textEl.getAttribute('y')) || 0;
+                        attrs.fontSize = textEl.getAttribute('font-size') || '16';
+                        attrs.fontWeight = textEl.getAttribute('font-weight');
+                        attrs.fontStyle = textEl.getAttribute('font-style');
+                        attrs.fill = textEl.getAttribute('fill');
+                        const bgRect = element.querySelector('rect');
+                        attrs.bgFill = bgRect.getAttribute('fill');
+                    } else if (element.tagName === 'g' && element.getAttribute('data-type') === 'book') {
+                        // 图书元素的处理
+                        const coverImage = element.querySelector('image');
+                        const titleText = element.querySelector('text');
+                        const authorText = element.querySelectorAll('text')[1];
+                        const descText = element.querySelectorAll('text')[2];
+                        
+                        const bookData = {
+                            coverUrl: coverImage ? coverImage.getAttribute('href') : '',
+                            title: titleText ? titleText.textContent : '',
+                            author: authorText ? authorText.textContent.replace('作者: ', '') : '',
+                            desc: descText ? descText.textContent : ''
+                        };
+                        
+                        attrs.content = JSON.stringify(bookData);
+                        attrs.x = parseInt(element.getAttribute('x')) || 0;
+                        attrs.y = parseInt(element.getAttribute('y')) || 0;
+                    } else if (element.tagName === 'image') {
+                        attrs.x = parseInt(element.getAttribute('x')) || 0;
+                        attrs.y = parseInt(element.getAttribute('y')) || 0;
+                        attrs.width = element.getAttribute('width') || '300';
+                        attrs.height = element.getAttribute('height') || '200';
+                        attrs.href = element.getAttribute('href');
+                    } else if (element.tagName === 'line') {
+                        attrs.x1 = parseInt(element.getAttribute('x1')) || 0;
+                        attrs.y1 = parseInt(element.getAttribute('y1')) || 0;
+                        attrs.x2 = parseInt(element.getAttribute('x2')) || 0;
+                        attrs.y2 = parseInt(element.getAttribute('y2')) || 0;
+                    } else if (element.tagName === 'g') {
+                        // 引用块的处理
+                        const textEl = element.querySelector('text');
+                        if (textEl) {
+                            attrs.x = parseInt(textEl.getAttribute('x')) || 0;
+                            attrs.y = parseInt(textEl.getAttribute('y')) || 0;
+                            attrs.fontSize = textEl.getAttribute('font-size') || '14';
+                        }
+                    }
+                    
+                    return attrs;
+                })
+            };
+            
+            const dataStr = JSON.stringify(template, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `template_${new Date().getTime()}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+        
+        // 清空画布
+        function clearCanvas() {
+            const svg = document.getElementById('editor-svg');
+            // 保留背景rect
+            const background = svg.querySelector('rect');
+            svg.innerHTML = '';
+            if (background) {
+                svg.appendChild(background);
+            }
+            editorState.elements = [];
+            editorState.selectedElement = null;
+            saveStateToHistory();
+        }
+        
+        // 删除选中元素
+        function deleteSelectedElement() {
+            if (!editorState.selectedElement) return;
+            
+            // 从DOM中移除元素
+            editorState.selectedElement.remove();
+            
+            // 从状态中移除元素
+            editorState.elements = editorState.elements.filter(el => el.element !== editorState.selectedElement);
+            
+            editorState.selectedElement = null;
+            saveStateToHistory();
+        }
+        
+        // 复制元素
+        function copyElement() {
+            if (!editorState.selectedElement) return;
+            
+            const elementObj = editorState.elements.find(el => el.element === editorState.selectedElement);
+            if (elementObj) {
+                editorState.clipboard = {...elementObj};
+                // 不复制DOM元素引用
+                editorState.clipboard.element = null;
+                alert('已复制选中元素');
+            }
+        }
+        
+        // 粘贴元素
+        function pasteElement() {
+            if (!editorState.clipboard) return;
+            
+            const svg = document.getElementById('editor-svg');
+            let element;
+            const clipboard = editorState.clipboard;
+            
+            switch(clipboard.type) {
+                case 'title':
+                    element = createTitleElement();
+                    element.setAttribute('x', (parseInt(clipboard.x) + 20).toString());
+                    element.setAttribute('y', (parseInt(clipboard.y) + 20).toString());
+                    element.setAttribute('font-size', clipboard.fontSize || '24');
+                    if (clipboard.fontWeight) element.setAttribute('font-weight', clipboard.fontWeight);
+                    element.textContent = clipboard.content || '标题';
+                    break;
+                case 'text':
+                    element = createTextElement();
+                    element.setAttribute('x', (parseInt(clipboard.x) + 20).toString());
+                    element.setAttribute('y', (parseInt(clipboard.y) + 20).toString());
+                    element.setAttribute('font-size', clipboard.fontSize || '16');
+                    if (clipboard.fontWeight) element.setAttribute('font-weight', clipboard.fontWeight);
+                    if (clipboard.fontStyle) element.setAttribute('font-style', clipboard.fontStyle);
+                    if (clipboard.fill) element.setAttribute('fill', clipboard.fill);
+                    if (clipboard.textAnchor) element.setAttribute('text-anchor', clipboard.textAnchor);
+                    element.textContent = clipboard.content || '点击编辑文本';
+                    break;
+                case 'highlight':
+                    element = createHighlightElement();
+                    const g = element;
+                    const bgRect = g.querySelector('rect');
+                    const textEl = g.querySelector('text');
+                    textEl.setAttribute('x', (parseInt(clipboard.x) + 20).toString());
+                    textEl.setAttribute('y', (parseInt(clipboard.y) + 20).toString());
+                    textEl.setAttribute('font-size', clipboard.fontSize || '16');
+                    if (clipboard.fontWeight) textEl.setAttribute('font-weight', clipboard.fontWeight);
+                    if (clipboard.fontStyle) textEl.setAttribute('font-style', clipboard.fontStyle);
+                    if (clipboard.fill) textEl.setAttribute('fill', clipboard.fill);
+                    textEl.textContent = clipboard.content || '高亮文本';
+                    // 更新背景矩形
+                    const bbox = textEl.getBBox();
+                    bgRect.setAttribute('x', bbox.x - 5);
+                    bgRect.setAttribute('y', bbox.y - 5);
+                    bgRect.setAttribute('width', bbox.width + 10);
+                    bgRect.setAttribute('height', bbox.height + 10);
+                    if (clipboard.bgFill) bgRect.setAttribute('fill', clipboard.bgFill);
+                    break;
+                case 'image':
+                    element = createImageElement();
+                    element.setAttribute('x', (parseInt(clipboard.x) + 20).toString());
+                    element.setAttribute('y', (parseInt(clipboard.y) + 20).toString());
+                    element.setAttribute('width', clipboard.width || '300');
+                    element.setAttribute('height', clipboard.height || '200');
+                    element.setAttribute('href', clipboard.content || 'https://via.placeholder.com/300x200.png');
+                    break;
+                case 'divider':
+                    element = createDividerElement();
+                    element.setAttribute('x1', (parseInt(clipboard.x1) + 20).toString() || '70');
+                    element.setAttribute('y1', (parseInt(clipboard.y1) + 20).toString() || '220');
+                    element.setAttribute('x2', (parseInt(clipboard.x2) + 20).toString() || '720');
+                    element.setAttribute('y2', (parseInt(clipboard.y2) + 20).toString() || '220');
+                    break;
+                case 'blockquote':
+                    element = createQuoteElement();
+                    const rect = element.querySelector('rect');
+                    const text = element.querySelector('text');
+                    const x = parseInt(clipboard.x) + 20 || 60;
+                    const y = parseInt(clipboard.y) + 20 || 270;
+                    rect.setAttribute('x', x - 20);
+                    rect.setAttribute('y', y - 50);
+                    rect.setAttribute('width', '500');
+                    rect.setAttribute('height', '100');
+                    text.setAttribute('x', x);
+                    text.setAttribute('y', y);
+                    text.setAttribute('font-size', clipboard.fontSize || '14');
+                    text.textContent = clipboard.content || '这是引用块内容，用于突出显示重要观点或引用他人的话语。';
+                    break;
+                case 'book':
+                    try {
+                        const bookData = JSON.parse(clipboard.content);
+                        element = createBookElementFromData(bookData, (parseInt(clipboard.x) + 20), (parseInt(clipboard.y) + 20));
+                    } catch (e) {
+                        console.error('解析图书数据失败:', e);
+                        // 创建默认图书元素
+                        element = createBookElement('', '图书标题', '作者', '图书简介');
+                    }
+                    break;
+                case 'list-item':
+                    element = createTextElement();
+                    element.setAttribute('x', (parseInt(clipboard.x) + 20).toString());
+                    element.setAttribute('y', (parseInt(clipboard.y) + 20).toString());
+                    element.setAttribute('font-size', clipboard.fontSize || '16');
+                    element.textContent = clipboard.content || '• 列表项';
+                    break;
+            }
+            
+            if (element) {
+                element.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    selectElement(element);
+                });
+                
+                svg.appendChild(element);
+                editorState.elements.push({
+                    id: Date.now() + Math.random(),
+                    type: clipboard.type,
+                    element: element,
+                    content: clipboard.content,
+                    x: parseInt(element.getAttribute('x')),
+                    y: parseInt(element.getAttribute('y'))
+                });
+                
+                selectElement(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 对齐文本
+        function alignText(alignment) {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                let anchor;
+                switch(alignment) {
+                    case 'start':
+                        anchor = 'start';
+                        break;
+                    case 'middle':
+                        anchor = 'middle';
+                        break;
+                    case 'end':
+                        anchor = 'end';
+                        break;
+                    case 'justify':
+                        // SVG不支持两端对齐，使用text-anchor middle作为近似
+                        anchor = 'middle';
+                        break;
+                    default:
+                        anchor = 'start';
+                }
+                element.setAttribute('text-anchor', anchor);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 插入链接
+        function insertLink() {
+            if (!editorState.selectedElement) {
+                alert('请先选择一个文本元素');
+                return;
+            }
+            
+            const url = prompt('请输入链接地址:');
+            if (url) {
+                // 这里可以扩展功能，将文本包装成链接
+                alert('链接功能将在后续版本中实现');
+            }
+        }
+        
+        // 插入表情
+        function insertEmoji() {
+            if (!editorState.selectedElement) {
+                alert('请先选择一个文本元素');
+                return;
+            }
+            
+            const emojis = ['😀', '😂', '😍', '😎', '👍', '❤️', '🔥', '✨', '🎉', '💡'];
+            const selectedEmoji = prompt(`请选择或输入表情:\n${emojis.join(' ')}`);
+            if (selectedEmoji) {
+                if (editorState.selectedElement.tagName === 'text' || 
+                    editorState.selectedElement.tagName === 'title') {
+                    editorState.selectedElement.textContent += selectedEmoji;
+                    updateElementData(editorState.selectedElement);
+                    saveStateToHistory();
+                }
+            }
+        }
+        
+        // 切换粗体
+        function toggleBold() {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                const currentWeight = element.getAttribute('font-weight') || 'normal';
+                const newWeight = currentWeight === 'bold' ? 'normal' : 'bold';
+                element.setAttribute('font-weight', newWeight);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 切换斜体
+        function toggleItalic() {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                const currentStyle = element.getAttribute('font-style') || 'normal';
+                const newStyle = currentStyle === 'italic' ? 'normal' : 'italic';
+                element.setAttribute('font-style', newStyle);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 切换下划线
+        function toggleUnderline() {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                const currentTextDecoration = element.getAttribute('text-decoration') || 'none';
+                const newDecoration = currentTextDecoration === 'underline' ? 'none' : 'underline';
+                element.setAttribute('text-decoration', newDecoration);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 切换删除线
+        function toggleStrikethrough() {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                const currentTextDecoration = element.getAttribute('text-decoration') || 'none';
+                let newDecoration;
+                if (currentTextDecoration === 'line-through') {
+                    newDecoration = currentTextDecoration.replace('line-through', '').trim() || 'none';
+                } else {
+                    newDecoration = currentTextDecoration === 'none' ? 'line-through' : currentTextDecoration + ' line-through';
+                }
+                element.setAttribute('text-decoration', newDecoration);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 改变文字颜色
+        function changeTextColor() {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            const color = document.getElementById('text-color').value;
+            if (['text', 'image', 'rect'].includes(element.tagName)) {
+                element.setAttribute('fill', color);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 改变背景颜色
+        function changeBgColor() {
+            const svg = document.getElementById('editor-svg');
+            const background = svg.querySelector('rect');
+            if (background) {
+                background.setAttribute('fill', document.getElementById('bg-color').value);
+                saveStateToHistory();
+            }
+        }
+        
+        // 改变字体
+        function changeFontFamily() {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                element.setAttribute('font-family', document.getElementById('font-family').value);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 改变字体大小
+        function changeFontSize() {
+            if (!editorState.selectedElement) return;
+            const element = editorState.selectedElement;
+            if (element.tagName === 'text' || element.tagName === 'title') {
+                element.setAttribute('font-size', document.getElementById('font-size').value);
+                updateElementData(element);
+                saveStateToHistory();
+            }
+        }
+        
+        // 将画布内容转换为微信公众号格式
+        function convertCanvasToWeChatFormat() {
+            // 这里需要实现将SVG元素转换为HTML格式的逻辑
+            // 以便与微信公众号编辑器兼容
+            let htmlContent = '<div style="max-width: 100%; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', \'PingFang SC\', \'Hiragino Sans GB\', \'Microsoft YaHei\', sans-serif; line-height: 1.6;">';
+            
+            // 按Y坐标排序元素，确保正确的显示顺序
+            const sortedElements = [...editorState.elements].sort((a, b) => a.y - b.y);
+            
+            sortedElements.forEach(el => {
+                switch(el.type) {
+                    case 'title':
+                        htmlContent += `<h1 style="font-size: ${el.fontSize}px; font-weight: bold; margin: 20px 0 10px; color: #333;">${el.content}</h1>`;
+                        break;
+                    case 'text':
+                        // 解析文本中的Markdown样式
+                        let textContent = el.content;
+                        textContent = textContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        textContent = textContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                        textContent = textContent.replace(/__(.*?)__/g, '<strong>$1</strong>');
+                        textContent = textContent.replace(/_(.*?)_/g, '<em>$1</em>');
+                        
+                        htmlContent += `<p style="font-size: ${el.fontSize}px; margin: 10px 0; line-height: 1.6;">${textContent}</p>`;
+                        break;
+                    case 'highlight':
+                        htmlContent += `<p style="font-size: ${el.fontSize}px; margin: 10px 0; line-height: 1.6;"><span style="background-color: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px;">${el.content}</span></p>`;
+                        break;
+                    case 'image':
+                        htmlContent += `<div style="margin: 20px 0; text-align: center;"><img src="${el.content}" style="width: 100%; max-width: 600px; height: auto; border-radius: 4px;" alt="图片"></div>`;
+                        break;
+                    case 'divider':
+                        htmlContent += `<div style="margin: 20px 0; height: 1px; background-color: #eee;"></div>`;
+                        break;
+                    case 'blockquote':
+                        htmlContent += `<blockquote style="margin: 20px 0; padding: 15px 20px; background: #f8f9fa; border-left: 4px solid #007bff; color: #6c757d; font-style: italic; border-radius: 0 4px 4px 0;">${el.content}</blockquote>`;
+                        break;
+                    case 'book':
+                        try {
+                            const bookData = JSON.parse(el.content);
+                            htmlContent += `
+                            <div class="book-item" style="display: flex; margin: 15px 0; padding: 10px; border: 1px solid #eee; border-radius: 6px; background-color: #fafafa;">
+                                ${bookData.coverUrl ? `<div class="book-cover" style="width: 80px; height: 100px; background-color: #e9ecef; border-radius: 4px; margin-right: 15px; display: flex; align-items: center; justify-content: center; color: #6c757d; font-size: 12px; text-align: center; background-image: url(${bookData.coverUrl}); background-size: cover; background-position: center;"></div>` : ''}
+                                <div class="book-info" style="flex: 1;">
+                                    <div class="book-title" style="font-weight: bold; margin-bottom: 5px;">${bookData.title}</div>
+                                    <div class="book-author" style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">作者: ${bookData.author}</div>
+                                    <div class="book-desc" style="font-size: 13px; color: #495057;">${bookData.desc}</div>
+                                </div>
+                            </div>`;
+                        } catch (e) {
+                            console.error('解析图书数据失败:', e);
+                        }
+                        break;
+                    case 'list-item':
+                        htmlContent += `<p style="font-size: ${el.fontSize}px; margin: 8px 0; text-indent: 0;">${el.content}</p>`;
+                        break;
+                }
+            });
+            
+            htmlContent += '</div>';
+            return htmlContent;
+        }
+        
+        // 供HTML调用的全局函数
+        window.loadSavedTemplate = loadSavedTemplate;
+        window.deleteSavedTemplate = deleteSavedTemplate;
+        window.editSavedTemplate = editSavedTemplate;
+    </script>
+</body>
+</html>

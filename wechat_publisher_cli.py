@@ -36,7 +36,7 @@ class WeChatPublisherCLI:
         self.author = author_input if author_input else "北屿"
         
         # 文章内容
-        print("\\n📄 请输入文章内容 (输入 'END' 结束):")
+        print("\n📄 请输入文章内容 (输入 'END' 结束):")
         content_lines = []
         while True:
             line = input()
@@ -44,7 +44,7 @@ class WeChatPublisherCLI:
                 break
             content_lines.append(line)
         
-        self.content = "\\n".join(content_lines)
+        self.content = "\n".join(content_lines)
         if not self.content.strip():
             print("❌ 文章内容不能为空")
             return False
@@ -61,7 +61,7 @@ class WeChatPublisherCLI:
         
     def confirm_input(self) -> bool:
         """确认输入信息"""
-        print("\\n" + "=" * 60)
+        print("\n" + "=" * 60)
         print("📋 请确认输入的信息:")
         print("=" * 60)
         print(f"📝 标题: {self.title}")
@@ -81,7 +81,7 @@ class WeChatPublisherCLI:
                 
     def run_wechat_publish(self, playwright: Playwright) -> None:
         """执行微信文章发布"""
-        print("\\n🚀 开始执行微信文章推送...")
+        print("\n🚀 开始执行微信文章推送...")
         
         try:
             print("🌐 正在打开浏览器...")
@@ -122,14 +122,14 @@ class WeChatPublisherCLI:
             print("💾 正在保存为草稿...")
             page1.get_by_role("button", name="保存为草稿").click()
             
-            print("\\n🎉 文章推送完成！")
+            print("\n🎉 文章推送完成！")
             print("✅ 请检查浏览器窗口确认操作结果")
             
             context.close()
             browser.close()
             
         except Exception as e:
-            print(f"\\n❌ 推送过程中发生错误: {str(e)}")
+            print(f"\n❌ 推送过程中发生错误: {str(e)}")
             print("💡 请检查:")
             print("   1. 微信公众平台登录状态")
             print("   2. 网络连接")
@@ -149,21 +149,21 @@ class WeChatPublisherCLI:
                 print("❌ 取消推送操作")
                 return
                 
-            print("\\n" + "🎯 " + "开始执行推送任务...")
+            print("\n" + "🎯 " + "开始执行推送任务...")
             
             # 执行推送
             with sync_playwright() as playwright:
                 self.run_wechat_publish(playwright)
                 
-            print("\\n✨ 任务完成！")
+            print("\n✨ 任务完成！")
             
         except KeyboardInterrupt:
-            print("\\n\\n⏸️ 操作被用户中断")
+            print("\n\n⏸️ 操作被用户中断")
         except Exception as e:
-            print(f"\\n💥 程序执行出错: {str(e)}")
+            print(f"\n💥 程序执行出错: {str(e)}")
             print("💡 如有问题，请检查网络连接和微信公众号登录状态")
         finally:
-            print("\\n👋 感谢使用微信公众号文章推送器！")
+            print("\n👋 感谢使用微信公众号文章推送器！")
 
 
 def main():

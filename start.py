@@ -14,50 +14,54 @@ def main():
 ╚═══════════════════════════════════════╝
     """)
     
-    print("请选择运行模式:")
-    print("1. 交互式命令行模式 (推荐)")
+    print("请选择操作:")
+    print("1. 开始推送文章 (交互式模式)")
     print("2. 查看使用说明")
     print("3. 退出")
     
     while True:
-        choice = input("\\n请输入选择 (1-3): ").strip()
+        choice = input("\n请输入选择 (1-3): ").strip()
         
         if choice == "1":
             # 运行交互式版本
-            from wechat_publisher_cli import main as cli_main
-            cli_main()
+            try:
+                from wechat_publisher_cli import main as cli_main
+                cli_main()
+            except ImportError as e:
+                print(f"❌ 依赖导入错误: {e}")
+                print("💡 请先运行: python3 -c 'from wechat_publisher_cli import main'")
             break
         elif choice == "2":
             print("""
-使用说明:
-─────────
+📋 使用说明:
+──────────
 
-📋 功能说明:
-  这个工具可以自动打开微信公众号后台，并自动填写文章信息
+🚀 功能:
+  自动打开微信公众号后台，填写并发布文章
 
-🚀 使用方法:
-  1. 运行本程序
-  2. 选择"交互式命令行模式"
-  3. 按提示输入文章标题、作者、内容等
-  4. 确认信息后程序会自动打开浏览器执行推送
+📝 使用流程:
+  1. 启动程序后，按提示输入文章信息
+  2. 标题: 文章标题（必填）
+  3. 作者: 作者姓名（可留空，默认"北屿"）
+  4. 内容: 文章正文（支持多行，输入"END"结束）
+  5. 摘要: 文章摘要（可留空，自动生成）
+  6. 确认信息后程序自动执行推送
 
 ⚠️  注意事项:
-  - 需要先登录微信公众平台
-  - 程序会在浏览器中自动完成操作
-  - 请确保网络连接正常
+  - 需要提前登录微信公众平台
+  - 确保网络连接正常
+  - 浏览器会自动打开并执行操作
 
-🔧 依赖要求:
-  - Python 3.x
-  - playwright 库: pip install playwright
-  - 浏览器驱动: playwright install
+🔧 安装依赖:
+  pip3 install playwright
+  playwright install
 
-💡 使用提示:
-  - 文章内容可以输入多行，输入"END"结束
-  - 作者可以留空，默认使用"北屿"
-  - 摘要可以留空，程序会自动生成
+💡 提示:
+  - 输入内容时支持多行，文章内容输入"END"结束
+  - 摘要留空会自动生成（取内容前50字符）
             """)
         elif choice == "3":
-            print("👋 再见！")
+            print("👋 感谢使用！")
             break
         else:
             print("❌ 无效选择，请输入1-3")

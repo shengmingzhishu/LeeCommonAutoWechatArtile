@@ -1,0 +1,11 @@
+# 微信公众号文章推送器依赖
+
+# 核心依赖
+playwright>=1.40.0
+
+# GUI依赖 (可选)
+# tkinter  # 通常随Python安装，无需单独安装
+
+# 如果需要GUI版本，可以安装这些依赖
+# tkinter-tooltip>=2.1.0
+# Pillow>=10.0.0
